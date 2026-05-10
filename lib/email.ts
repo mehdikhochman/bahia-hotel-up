@@ -38,7 +38,7 @@ async function deliver(opts: {
     to: opts.to,
     subject: opts.subject,
     html: opts.html,
-    replyTo: opts.replyTo,
+    reply_to: opts.replyTo,
   });
 }
 
