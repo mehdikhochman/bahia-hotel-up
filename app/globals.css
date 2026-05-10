@@ -1,0 +1,99 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --ivory: #fdf5e6;
+  --teal: #00688b;
+  --sand: #c9a96e;
+}
+
+html,
+body {
+  @apply bg-ivory-100 text-teal-700 antialiased;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Playfair Display", serif;
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: var(--teal);
+  color: var(--ivory);
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+input,
+button,
+select,
+textarea {
+  font-family: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--ivory);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--teal);
+  border-radius: 9999px;
+}
+
+.neon-text {
+  text-shadow: 0 0 12px rgba(255, 61, 129, 0.85),
+    0 0 24px rgba(255, 61, 129, 0.55), 0 0 48px rgba(168, 85, 247, 0.45);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.glass-light {
+  background: rgba(253, 245, 230, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(0, 68, 92, 0.08);
+}
+
+.gold-shimmer {
+  background: linear-gradient(
+    90deg,
+    #c9a96e 0%,
+    #f1e1bf 30%,
+    #c9a96e 50%,
+    #f1e1bf 70%,
+    #c9a96e 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+
+/* iOS safe area */
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
