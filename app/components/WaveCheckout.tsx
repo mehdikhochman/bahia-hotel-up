@@ -28,7 +28,10 @@ type Props = {
   alreadySubmitted: boolean;
   waveNumber: string;
   merchantName: string;
+  /** Static image URL — takes precedence if provided. */
   qrUrl?: string | null;
+  /** Wave merchant payment link (e.g. https://pay.wave.com/m/…). */
+  waveLink?: string | null;
 };
 
 export default function WaveCheckout({
@@ -39,6 +42,7 @@ export default function WaveCheckout({
   waveNumber,
   merchantName,
   qrUrl,
+  waveLink,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -134,9 +138,24 @@ export default function WaveCheckout({
                 className="w-full h-full object-contain p-2"
               />
             ) : (
-              <QrPlaceholder seed={reference} className="bg-white" />
+              <QrPlaceholder
+                value={waveLink ?? undefined}
+                seed={reference}
+                className="bg-white"
+              />
             )}
           </div>
+
+          {waveLink && (
+            <a
+              href={waveLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-3 text-sand-700 hover:text-sand-800 text-xs underline"
+            >
+              Ouvrir le lien Wave →
+            </a>
+          )}
 
           <div className="mt-5 space-y-1">
             <div className="text-teal-500 text-xs uppercase tracking-widest">

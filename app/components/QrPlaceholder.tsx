@@ -1,21 +1,46 @@
 "use client";
 
 import { useMemo } from "react";
+import { QRCodeSVG } from "qrcode.react";
 
 type Props = {
-  /** Seed text — controls the deterministic pattern. */
+  /** URL or text to encode. If empty, renders a stylized placeholder. */
+  value?: string | null;
+  /** Used by the placeholder fallback for deterministic patterns. */
   seed?: string;
   className?: string;
 };
 
 /**
- * Stylized QR-code placeholder.
- *
- * NOT a real QR encoder — only the three finder patterns are exact.
- * Replace this component with `<img src={waveQrUrl} />` once you have
- * the QR image from your Wave Business account.
+ * Renders a real Wave QR code when a `value` is provided, otherwise falls
+ * back to a stylized placeholder (useful before the Wave link is configured).
  */
-export default function QrPlaceholder({ seed = "BAHIA", className = "" }: Props) {
+export default function QrPlaceholder({
+  value,
+  seed = "BAHIA",
+  className = "",
+}: Props) {
+  if (value && value.length > 0) {
+    return (
+      <div
+        className={`bg-white p-3 rounded-md flex items-center justify-center ${className}`}
+      >
+        <QRCodeSVG
+          value={value}
+          size={240}
+          level="M"
+          marginSize={0}
+          bgColor="#FFFFFF"
+          fgColor="#00445C"
+          style={{ width: "100%", height: "100%", maxWidth: 240 }}
+        />
+      </div>
+    );
+  }
+  return <FakePattern seed={seed} className={className} />;
+}
+
+function FakePattern({ seed, className }: { seed: string; className: string }) {
   const cells = 25;
   const grid = useMemo(() => {
     let h = 0;
@@ -25,7 +50,6 @@ export default function QrPlaceholder({ seed = "BAHIA", className = "" }: Props)
     return Array.from({ length: cells * cells }, (_, i) => {
       const x = i % cells;
       const y = Math.floor(i / cells);
-
       const inFinderFrame = (cx: number, cy: number) => {
         const ix = x - cx;
         const iy = y - cy;
@@ -34,18 +58,14 @@ export default function QrPlaceholder({ seed = "BAHIA", className = "" }: Props)
         if (ix >= 2 && ix <= 4 && iy >= 2 && iy <= 4) return true;
         return false;
       };
-
       const isFinder =
         inFinderFrame(0, 0) ||
         inFinderFrame(cells - 7, 0) ||
         inFinderFrame(0, cells - 7);
-
-      // Pseudo-random fill from seed hash
       const rnd = ((x * 31 + y * 17 + h) >>> 0) % 100;
       return isFinder || rnd < 42;
     });
   }, [seed]);
-
   return (
     <div
       className={`grid w-full h-full gap-px bg-white p-2 rounded-md ${className}`}

@@ -76,6 +76,7 @@ export default async function CheckoutPage({ params }: { params: Params }) {
               "BAHIA HOTEL — ASSINIE"
             }
             qrUrl={process.env.NEXT_PUBLIC_WAVE_QR_URL || null}
+            waveLink={process.env.NEXT_PUBLIC_WAVE_LINK || null}
           />
         </div>
       </div>
