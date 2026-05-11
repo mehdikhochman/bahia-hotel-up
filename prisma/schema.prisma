@@ -205,6 +205,16 @@ model Payment {
 // Saturday Night Karaoke — table reservations
 // --------------------------------------------------------------------------
 
+// --------------------------------------------------------------------------
+// Key-value runtime settings — editable from /admin/settings without redeploy
+// --------------------------------------------------------------------------
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model KaraokeReservation {
   id        String        @id @default(cuid())
   reference String        @unique

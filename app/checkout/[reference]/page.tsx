@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Waves, ArrowLeft } from "lucide-react";
 import { getBookingByReference } from "@/app/actions/booking";
+import { getWaveSettings } from "@/lib/settings";
 import WaveCheckout from "@/app/components/WaveCheckout";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,10 @@ export async function generateMetadata({ params }: { params: Params }) {
 }
 
 export default async function CheckoutPage({ params }: { params: Params }) {
-  const booking = await getBookingByReference(params.reference);
+  const [booking, wave] = await Promise.all([
+    getBookingByReference(params.reference),
+    getWaveSettings(),
+  ]);
   if (!booking) notFound();
 
   const alreadySubmitted =
@@ -68,15 +72,10 @@ export default async function CheckoutPage({ params }: { params: Params }) {
               nights: booking.nights,
             }}
             alreadySubmitted={alreadySubmitted}
-            waveNumber={
-              process.env.NEXT_PUBLIC_WAVE_NUMBER || "+225 07 00 00 00 00"
-            }
-            merchantName={
-              process.env.NEXT_PUBLIC_WAVE_MERCHANT_NAME ||
-              "BAHIA HOTEL — ASSINIE"
-            }
+            waveNumber={wave.number}
+            merchantName={wave.merchantName}
+            waveLink={wave.link || null}
             qrUrl={process.env.NEXT_PUBLIC_WAVE_QR_URL || null}
-            waveLink={process.env.NEXT_PUBLIC_WAVE_LINK || null}
           />
         </div>
       </div>

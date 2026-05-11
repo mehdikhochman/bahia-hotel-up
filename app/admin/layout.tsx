@@ -6,6 +6,7 @@ import {
   BedDouble,
   LogOut,
   Waves,
+  Settings,
 } from "lucide-react";
 import { getAdminSession } from "@/lib/auth";
 
@@ -16,6 +17,7 @@ const NAV = [
   { href: "/admin/bookings", label: "Réservations", icon: CalendarCheck },
   { href: "/admin/karaoke", label: "Karaoké", icon: Mic },
   { href: "/admin/rooms", label: "Hébergements", icon: BedDouble },
+  { href: "/admin/settings", label: "Paramètres Wave", icon: Settings },
 ] as const;
 
 export default async function AdminLayout({
