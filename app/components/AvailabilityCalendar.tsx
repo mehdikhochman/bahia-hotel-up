@@ -136,12 +136,12 @@ export default function AvailabilityCalendar({
             const m = cursor.m - 1;
             setCursor(m < 0 ? { y: cursor.y - 1, m: 11 } : { y: cursor.y, m });
           }}
-          className="w-8 h-8 grid place-items-center rounded-full hover:bg-ivory-200 text-teal-600"
+          className="w-10 h-10 grid place-items-center rounded-full hover:bg-ivory-200 active:bg-ivory-300 text-teal-600 touch-manipulation"
           aria-label="Mois précédent"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-5 h-5" />
         </button>
-        <div className="font-display text-teal-700 text-base">
+        <div className="font-display text-teal-700 text-base sm:text-lg capitalize">
           {MONTH_NAMES[cursor.m]} {cursor.y}
         </div>
         <button
@@ -150,10 +150,10 @@ export default function AvailabilityCalendar({
             const m = cursor.m + 1;
             setCursor(m > 11 ? { y: cursor.y + 1, m: 0 } : { y: cursor.y, m });
           }}
-          className="w-8 h-8 grid place-items-center rounded-full hover:bg-ivory-200 text-teal-600"
+          className="w-10 h-10 grid place-items-center rounded-full hover:bg-ivory-200 active:bg-ivory-300 text-teal-600 touch-manipulation"
           aria-label="Mois suivant"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-5 h-5" />
         </button>
       </div>
 
@@ -181,7 +181,7 @@ export default function AvailabilityCalendar({
           const disabled = past || fullyBooked;
 
           let cls =
-            "relative h-9 sm:h-10 rounded-md transition-colors text-xs sm:text-sm ";
+            "relative h-11 sm:h-10 rounded-md transition-colors text-sm sm:text-sm touch-manipulation ";
           if (disabled) {
             cls += "text-teal-300 cursor-not-allowed ";
             if (fullyBooked) cls += "line-through ";

@@ -118,8 +118,8 @@ export default function Accommodations({ rooms, onBook }: Props) {
                 </div>
               </div>
 
-              <div className="p-6 sm:p-7">
-                <h3 className="font-display text-2xl text-teal-700 mb-1">
+              <div className="p-5 sm:p-7">
+                <h3 className="font-display text-xl sm:text-2xl text-teal-700 mb-1">
                   {r.name}
                 </h3>
                 <p className="text-sand-600 text-sm italic mb-3">{r.tagline}</p>

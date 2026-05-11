@@ -32,7 +32,8 @@ export default function Hero({ onBook }: Props) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.1 }}
-          className="font-display text-ivory-100 text-[42px] leading-[1.05] sm:text-6xl md:text-7xl lg:text-8xl max-w-4xl"
+          className="font-display text-ivory-100 leading-[1.05] max-w-4xl"
+          style={{ fontSize: "clamp(2rem, 8.5vw, 6.5rem)" }}
         >
           Là où la lagune{" "}
           <em className="not-italic gold-shimmer">embrasse</em> l'océan.

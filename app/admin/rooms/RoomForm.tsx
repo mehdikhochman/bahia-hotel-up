@@ -99,7 +99,7 @@ export default function RoomForm({
         />
       </Field>
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         <Field label="Capacité (pers.)" error={err("capacity")}>
           <input
             required

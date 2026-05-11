@@ -124,12 +124,12 @@ export default function WaveCheckout({
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 md:p-7 border border-teal-100 text-center shadow-soft">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 md:p-7 border border-teal-100 text-center shadow-soft">
           <div className="text-teal-500 text-xs uppercase tracking-widest mb-3">
             Scannez pour payer via Wave
           </div>
 
-          <div className="aspect-square w-full max-w-[260px] mx-auto rounded-2xl bg-ivory-100 grid place-items-center border border-teal-100 overflow-hidden">
+          <div className="aspect-square w-full max-w-[240px] sm:max-w-[260px] mx-auto rounded-2xl bg-ivory-100 grid place-items-center border border-teal-100 overflow-hidden">
             {qrUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img

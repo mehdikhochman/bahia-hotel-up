@@ -69,15 +69,15 @@ export default async function AdminKaraokePage() {
                 key={d}
                 className="bg-white rounded-2xl border border-teal-100 overflow-hidden"
               >
-                <header className="px-5 py-3 bg-teal-50 border-b border-teal-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-teal-700">
-                    <Calendar className="w-4 h-4 text-sand-600" />
-                    <span className="font-display text-lg capitalize">
+                <header className="px-4 sm:px-5 py-3 bg-teal-50 border-b border-teal-100 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-teal-700 min-w-0">
+                    <Calendar className="w-4 h-4 text-sand-600 shrink-0" />
+                    <span className="font-display text-base sm:text-lg capitalize truncate">
                       {formatDate(d)}
                     </span>
                   </div>
-                  <span className="text-teal-600 text-sm">
-                    {totalPpl} pers. attendues
+                  <span className="text-teal-600 text-xs sm:text-sm whitespace-nowrap">
+                    {totalPpl} pers.
                   </span>
                 </header>
                 <ul className="divide-y divide-teal-100">
@@ -106,7 +106,7 @@ export default async function AdminKaraokePage() {
                           {r.reference} · {formatDateTime(r.createdAt)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
                         <span
                           className={`px-2.5 py-1 rounded-full border text-[11px] ${
                             STATUS_TONE[r.status]
@@ -129,9 +129,9 @@ export default async function AdminKaraokePage() {
                               />
                               <button
                                 title="Confirmer"
-                                className="w-8 h-8 grid place-items-center rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                                className="w-10 h-10 sm:w-8 sm:h-8 grid place-items-center rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 active:bg-emerald-200 touch-manipulation"
                               >
-                                <CheckCircle2 className="w-4 h-4" />
+                                <CheckCircle2 className="w-5 h-5 sm:w-4 sm:h-4" />
                               </button>
                             </form>
                             <form action={updateKaraokeStatusAction}>
@@ -147,9 +147,9 @@ export default async function AdminKaraokePage() {
                               />
                               <button
                                 title="Annuler"
-                                className="w-8 h-8 grid place-items-center rounded-full bg-red-50 text-red-600 hover:bg-red-100"
+                                className="w-10 h-10 sm:w-8 sm:h-8 grid place-items-center rounded-full bg-red-50 text-red-600 hover:bg-red-100 active:bg-red-200 touch-manipulation"
                               >
-                                <XCircle className="w-4 h-4" />
+                                <XCircle className="w-5 h-5 sm:w-4 sm:h-4" />
                               </button>
                             </form>
                           </>

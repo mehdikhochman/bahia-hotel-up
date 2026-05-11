@@ -323,7 +323,7 @@ export default function BookingModal({ open, rooms, preselected, onClose }: Prop
               </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-5 md:px-8 py-5 md:py-6">
+            <div className="flex-1 overflow-y-auto px-4 md:px-8 py-4 md:py-6 overscroll-contain">
               {step === 0 && (
                 <StepStay
                   data={data}
@@ -356,18 +356,19 @@ export default function BookingModal({ open, rooms, preselected, onClose }: Prop
               )}
             </div>
 
-            <footer className="px-5 md:px-8 py-4 border-t border-teal-100 bg-white/60 backdrop-blur-sm flex items-center justify-between gap-3 safe-bottom">
+            <footer className="px-4 md:px-8 py-3 md:py-4 border-t border-teal-100 bg-white/80 backdrop-blur-sm flex items-center justify-between gap-3 safe-bottom">
               <button
                 onClick={back}
                 disabled={step === 0 || pending}
-                className="px-4 py-2.5 rounded-full text-teal-600 disabled:opacity-30 hover:bg-teal-100 transition-colors text-sm flex items-center gap-1.5"
+                className="px-3 py-2.5 rounded-full text-teal-600 disabled:opacity-30 hover:bg-teal-100 transition-colors text-sm flex items-center gap-1.5 min-h-[44px] touch-manipulation"
               >
-                <ArrowLeft className="w-4 h-4" /> Retour
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Retour</span>
               </button>
               {step < STEPS.length - 1 ? (
                 <button
                   onClick={next}
-                  className="px-6 py-3 rounded-full bg-teal-500 hover:bg-teal-600 text-ivory-100 text-sm font-medium flex items-center gap-2"
+                  className="flex-1 sm:flex-initial px-5 sm:px-6 py-3 rounded-full bg-teal-500 hover:bg-teal-600 active:bg-teal-700 text-ivory-100 text-sm font-medium flex items-center justify-center gap-2 min-h-[44px] touch-manipulation"
                 >
                   Continuer <ArrowRight className="w-4 h-4" />
                 </button>
@@ -375,7 +376,7 @@ export default function BookingModal({ open, rooms, preselected, onClose }: Prop
                 <button
                   onClick={submit}
                   disabled={pending}
-                  className="px-6 py-3 rounded-full bg-sand-500 hover:bg-sand-400 text-teal-800 text-sm font-semibold flex items-center gap-2 disabled:opacity-60"
+                  className="flex-1 sm:flex-initial px-5 sm:px-6 py-3 rounded-full bg-sand-500 hover:bg-sand-400 active:bg-sand-600 text-teal-800 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 min-h-[44px] touch-manipulation"
                 >
                   {pending ? (
                     <>
@@ -719,7 +720,7 @@ function StepIdentity({
             JPG, PNG, WEBP ou PDF — 8 Mo max
           </span>
         </div>
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           <UploadZone
             side="front"
             label="Recto"

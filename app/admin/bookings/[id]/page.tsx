@@ -59,12 +59,12 @@ export default async function BookingDetail({
         <ArrowLeft className="w-4 h-4" /> Retour aux réservations
       </Link>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5 md:mb-6">
+        <div className="min-w-0">
           <div className="text-teal-500 text-xs uppercase tracking-widest mb-1">
             Réservation
           </div>
-          <h1 className="font-display text-2xl md:text-3xl text-teal-700 font-mono">
+          <h1 className="font-display text-xl sm:text-2xl md:text-3xl text-teal-700 font-mono break-all">
             {booking.reference}
           </h1>
           <div className="text-teal-500 text-xs mt-1">
@@ -72,7 +72,7 @@ export default async function BookingDetail({
           </div>
         </div>
         <span
-          className={`self-start md:self-auto px-3 py-1.5 rounded-full border text-xs ${
+          className={`self-start md:self-auto px-3 py-1.5 rounded-full border text-xs whitespace-nowrap ${
             statusTone[booking.status]
           }`}
         >
@@ -285,12 +285,12 @@ function Row({
   icon?: typeof Mail;
 }) {
   return (
-    <div className="flex justify-between gap-3 py-1.5 text-sm">
-      <span className="text-teal-500 flex items-center gap-1.5 shrink-0">
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:gap-3 py-1.5 text-sm gap-0.5">
+      <span className="text-teal-500 flex items-center gap-1.5 shrink-0 text-xs sm:text-sm">
         {Icon && <Icon className="w-3.5 h-3.5" />}
         {label}
       </span>
-      <span className="text-teal-700 font-medium text-right break-all">
+      <span className="text-teal-700 font-medium sm:text-right break-words sm:break-all min-w-0">
         {value}
       </span>
     </div>

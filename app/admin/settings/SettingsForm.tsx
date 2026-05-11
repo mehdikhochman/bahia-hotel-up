@@ -41,8 +41,8 @@ export default function SettingsForm({ initial }: Props) {
     !state.ok && state.fieldErrors ? state.fieldErrors[k] : undefined;
 
   return (
-    <form action={action} className="grid lg:grid-cols-[1fr,320px] gap-6">
-      <div className="space-y-5">
+    <form action={action} className="grid lg:grid-cols-[1fr,320px] gap-6 lg:gap-8">
+      <div className="space-y-5 order-2 lg:order-1">
         <Field
           label="Numéro Wave Business"
           icon={Phone}
@@ -110,7 +110,7 @@ export default function SettingsForm({ initial }: Props) {
         <SubmitButton />
       </div>
 
-      <aside className="space-y-4">
+      <aside className="space-y-4 order-1 lg:order-2">
         <div className="text-teal-500 text-xs uppercase tracking-widest">
           Aperçu QR live
         </div>
@@ -129,7 +129,7 @@ export default function SettingsForm({ initial }: Props) {
 
         <div className="bg-white rounded-2xl border border-teal-100 p-4">
           {link ? (
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center max-w-[220px] mx-auto">
               <QRCodeSVG
                 value={link}
                 size={220}
@@ -137,10 +137,11 @@ export default function SettingsForm({ initial }: Props) {
                 marginSize={0}
                 bgColor="#FFFFFF"
                 fgColor="#00445C"
+                style={{ width: "100%", height: "auto" }}
               />
             </div>
           ) : (
-            <div className="aspect-square grid place-items-center text-teal-400 text-xs text-center px-4">
+            <div className="aspect-square max-w-[220px] mx-auto grid place-items-center text-teal-400 text-xs text-center px-4">
               Saisis un lien Wave valide pour voir le QR.
             </div>
           )}
