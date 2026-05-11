@@ -20,6 +20,11 @@ const roomSchema = z.object({
   pricePerNight: z.coerce.number().int().positive("Prix invalide").max(10_000_000),
   capacity: z.coerce.number().int().min(1).max(20),
   surfaceSqm: z.coerce.number().int().min(5).max(2000),
+  totalUnits: z.coerce
+    .number()
+    .int()
+    .min(1, "Au moins 1 unité")
+    .max(100, "100 unités maximum"),
   imageUrl: z.string().url("URL d'image invalide"),
   amenities: z
     .string()
@@ -50,6 +55,7 @@ function parseFormData(formData: FormData): RoomFormResult | z.infer<typeof room
     pricePerNight: formData.get("pricePerNight"),
     capacity: formData.get("capacity"),
     surfaceSqm: formData.get("surfaceSqm"),
+    totalUnits: formData.get("totalUnits"),
     imageUrl: formData.get("imageUrl"),
     amenities: formData.get("amenities"),
     isActive: formData.get("isActive"),

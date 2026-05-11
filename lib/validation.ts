@@ -19,8 +19,16 @@ export const isoDateSchema = z
 // Booking
 // --------------------------------------------------------------------------
 
-export const idTypeSchema = z.enum(["CNI", "PASSPORT", "CONSULAR_CARD"]);
+export const idTypeSchema = z.enum([
+  "CNI",
+  "PASSPORT",
+  "CONSULAR_CARD",
+  "RESIDENCE_PERMIT",
+]);
 export type IdTypeInput = z.infer<typeof idTypeSchema>;
+
+/** ID document types that legally require both sides scanned. */
+export const ID_TYPES_REQUIRING_BACK: IdTypeInput[] = ["CNI", "RESIDENCE_PERMIT"];
 
 export const bookingInputSchema = z
   .object({
@@ -41,12 +49,27 @@ export const bookingInputSchema = z
     idImageUrl: z
       .string()
       .trim()
-      .min(1, "Téléversement de la pièce requis")
+      .min(1, "Téléversement du recto requis")
       .refine(
         (v) => /^https?:\/\//.test(v) || v.startsWith("/") || v.startsWith("local:"),
         "Référence de téléversement invalide"
       ),
     idImageKey: z.string().optional(),
+    idImageBackUrl: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .refine(
+        (v) =>
+          v == null ||
+          v === "" ||
+          /^https?:\/\//.test(v) ||
+          v.startsWith("/") ||
+          v.startsWith("local:"),
+        "Référence de téléversement invalide"
+      ),
+    idImageBackKey: z.string().optional().nullable(),
     rgpdAccepted: z.literal(true, {
       errorMap: () => ({
         message: "Vous devez accepter le traitement légal des données.",
@@ -70,6 +93,17 @@ export const bookingInputSchema = z
         code: z.ZodIssueCode.custom,
         path: ["checkIn"],
         message: "La date d'arrivée ne peut pas être dans le passé.",
+      });
+    }
+    if (
+      ID_TYPES_REQUIRING_BACK.includes(v.idType) &&
+      !v.idImageBackUrl
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["idImageBackUrl"],
+        message:
+          "Le verso est obligatoire pour la CNI et la carte de séjour.",
       });
     }
   });

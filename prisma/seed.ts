@@ -56,6 +56,7 @@ const rooms = [
     pricePerNight: 75_000,
     capacity: 2,
     surfaceSqm: 42,
+    totalUnits: 5, // 5 identical units of this category
     imageUrl:
       "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=80",
     amenities: ["AC", "Wi-Fi", "Vue jardin", "Lit king-size", "Salle de bain marbre"],
@@ -70,6 +71,7 @@ const rooms = [
     pricePerNight: 95_000,
     capacity: 2,
     surfaceSqm: 38,
+    totalUnits: 3,
     imageUrl:
       "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1600&q=80",
     amenities: ["AC", "Wi-Fi", "Vue océan", "Balcon", "Mini-bar"],

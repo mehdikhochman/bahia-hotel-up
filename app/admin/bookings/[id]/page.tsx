@@ -24,6 +24,7 @@ const ID_TYPE_LABEL: Record<string, string> = {
   CNI: "CNI",
   PASSPORT: "Passeport",
   CONSULAR_CARD: "Carte consulaire",
+  RESIDENCE_PERMIT: "Carte de séjour",
 };
 
 export default async function BookingDetail({
@@ -127,16 +128,26 @@ export default async function BookingDetail({
                       : "Refusé"
                   }
                 />
-                <div className="mt-3 pt-3 border-t border-teal-100">
+                <div className="mt-3 pt-3 border-t border-teal-100 flex flex-wrap items-center gap-2">
                   <a
                     href={`/admin/api/scan/${booking.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500 hover:bg-teal-600 text-ivory-100 text-sm"
                   >
-                    <FileText className="w-4 h-4" /> Voir la pièce
+                    <FileText className="w-4 h-4" /> Recto
                   </a>
-                  <span className="ml-3 text-teal-500 text-xs">
+                  {booking.identification.imageBackUrl && (
+                    <a
+                      href={`/admin/api/scan/${booking.id}?side=back`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500 hover:bg-teal-600 text-ivory-100 text-sm"
+                    >
+                      <FileText className="w-4 h-4" /> Verso
+                    </a>
+                  )}
+                  <span className="text-teal-500 text-xs">
                     Accès journalisé
                   </span>
                 </div>

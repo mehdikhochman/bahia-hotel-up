@@ -77,20 +77,31 @@ export async function createBooking(
     };
   }
 
-  // Conflict detection — no overlapping confirmed/pending booking
-  const conflict = await prisma.booking.findFirst({
+  // Capacity-aware conflict detection — a Room category may have N identical
+  // physical units (totalUnits). We block only if every night in the
+  // requested range already has totalUnits concurrent bookings.
+  const overlapping = await prisma.booking.findMany({
     where: {
       roomId: room.id,
       status: { in: ["PENDING_PAYMENT", "AWAITING_VERIFICATION", "CONFIRMED"] },
       AND: [{ checkIn: { lt: checkOut } }, { checkOut: { gt: checkIn } }],
     },
-    select: { id: true },
+    select: { checkIn: true, checkOut: true },
   });
-  if (conflict) {
-    return {
-      ok: false,
-      error: "Cet hébergement n'est plus disponible sur ces dates.",
-    };
+  const DAY_MS = 86_400_000;
+  for (let t = checkIn.getTime(); t < checkOut.getTime(); t += DAY_MS) {
+    const day = new Date(t);
+    const dayLoad = overlapping.filter(
+      (b) => b.checkIn <= day && b.checkOut > day
+    ).length;
+    if (dayLoad >= room.totalUnits) {
+      return {
+        ok: false,
+        error: `Plus aucune unité disponible le ${day
+          .toISOString()
+          .split("T")[0]} pour ${room.name}.`,
+      };
+    }
   }
 
   const pricing = computePricing({
@@ -137,6 +148,8 @@ export async function createBooking(
             idNumber: input.idNumber,
             imageUrl: input.idImageUrl,
             imageKey: input.idImageKey,
+            imageBackUrl: input.idImageBackUrl || null,
+            imageBackKey: input.idImageBackKey || null,
             rgpdAccepted: input.rgpdAccepted,
             acceptedAt: new Date(),
           },

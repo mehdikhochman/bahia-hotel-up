@@ -92,6 +92,14 @@ export default async function RoomsPage() {
                   <span className="flex items-center gap-1">
                     <Maximize className="w-3 h-3" /> {r.surfaceSqm}m²
                   </span>
+                  {r.totalUnits > 1 && (
+                    <span
+                      className="ml-auto px-2 py-0.5 rounded-full bg-sand-100 text-sand-700 text-[10px] font-semibold"
+                      title="Nombre d'unités identiques"
+                    >
+                      × {r.totalUnits}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center justify-between mb-3">
                   <span className="font-display text-teal-700 text-lg">

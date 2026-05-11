@@ -27,9 +27,10 @@ enum BookingStatus {
 }
 
 enum IdType {
-  CNI            // Carte Nationale d'Identité
+  CNI               // Carte Nationale d'Identité
   PASSPORT
-  CONSULAR_CARD  // Carte consulaire / attestation
+  CONSULAR_CARD     // Carte consulaire / attestation
+  RESIDENCE_PERMIT  // Carte de séjour
 }
 
 enum PaymentMethod {
@@ -101,6 +102,7 @@ model Room {
   surfaceSqm    Int
   imageUrl      String
   amenities     String[]
+  totalUnits    Int       @default(1)  // number of identical physical units of this category
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -161,8 +163,10 @@ model Identification {
   fullName     String   // as printed on the ID document
   idType       IdType
   idNumber     String
-  imageUrl     String   // signed Vercel Blob URL or local key
-  imageKey     String?  // raw storage key (for re-signing)
+  imageUrl     String   // recto (front) — signed Vercel Blob URL or local key
+  imageKey     String?  // recto storage key
+  imageBackUrl String?  // verso (back) — required for CNI / Carte de séjour
+  imageBackKey String?  // verso storage key
 
   rgpdAccepted Boolean  @default(false)
   acceptedAt   DateTime?

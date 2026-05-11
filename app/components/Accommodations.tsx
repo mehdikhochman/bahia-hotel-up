@@ -107,6 +107,11 @@ export default function Accommodations({ rooms, onBook }: Props) {
                 <span className="absolute top-4 left-4 px-3 py-1 rounded-full bg-ivory-100/90 text-teal-700 text-xs font-medium tracking-wider uppercase">
                   {r.type === "VILLA" ? "Villa" : "Chambre"}
                 </span>
+                {r.totalUnits > 1 && (
+                  <span className="absolute top-4 right-4 px-3 py-1 rounded-full bg-sand-500/95 text-teal-800 text-[11px] font-semibold">
+                    {r.totalUnits} unités
+                  </span>
+                )}
                 <div className="absolute bottom-4 right-4 px-4 py-2 rounded-full bg-sand-500/95 backdrop-blur-sm text-teal-800 text-sm font-semibold">
                   {formatXOF(r.pricePerNight)}{" "}
                   <span className="opacity-80 text-xs font-normal">/ nuit</span>

@@ -33,6 +33,8 @@ type Props = {
 
 const STEPS = ["Séjour", "Voyageur", "Identité", "Récap"] as const;
 
+type IdType = "CNI" | "PASSPORT" | "CONSULAR_CARD" | "RESIDENCE_PERMIT";
+
 type FormState = {
   roomId: string;
   checkIn: string;
@@ -42,21 +44,46 @@ type FormState = {
   email: string;
   phone: string;
   nationality: string;
-  idType: "CNI" | "PASSPORT" | "CONSULAR_CARD";
+  idType: IdType;
   idNumber: string;
   idImageUrl: string;
   idImageKey: string;
   idFileName: string;
+  idImageBackUrl: string;
+  idImageBackKey: string;
+  idFileBackName: string;
   rgpdAccepted: boolean;
 };
 
-const ID_TYPES = [
-  { value: "CNI" as const, label: "CNI ivoirienne", note: "Carte nationale d'identité" },
-  { value: "PASSPORT" as const, label: "Passeport", note: "Document international" },
+const ID_TYPES: Array<{
+  value: IdType;
+  label: string;
+  note: string;
+  requiresBack: boolean;
+}> = [
   {
-    value: "CONSULAR_CARD" as const,
+    value: "CNI",
+    label: "CNI ivoirienne",
+    note: "Carte nationale d'identité",
+    requiresBack: true,
+  },
+  {
+    value: "PASSPORT",
+    label: "Passeport",
+    note: "Document international",
+    requiresBack: false,
+  },
+  {
+    value: "RESIDENCE_PERMIT",
+    label: "Carte de séjour",
+    note: "Résidents non-ivoiriens",
+    requiresBack: true,
+  },
+  {
+    value: "CONSULAR_CARD",
     label: "Carte consulaire",
     note: "Ou attestation officielle",
+    requiresBack: false,
   },
 ];
 
@@ -67,7 +94,6 @@ export default function BookingModal({ open, rooms, preselected, onClose }: Prop
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState(0);
-  const [uploading, setUploading] = useState(false);
   const [data, setData] = useState<FormState>(() => ({
     roomId: preselected?.id || rooms[0]?.id || "",
     checkIn: "",
@@ -82,6 +108,9 @@ export default function BookingModal({ open, rooms, preselected, onClose }: Prop
     idImageUrl: "",
     idImageKey: "",
     idFileName: "",
+    idImageBackUrl: "",
+    idImageBackKey: "",
+    idFileBackName: "",
     rgpdAccepted: false,
   }));
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -143,28 +172,38 @@ export default function BookingModal({ open, rooms, preselected, onClose }: Prop
     setErrors((e) => ({ ...e, [k as string]: "" }));
   };
 
-  async function uploadIdFile(file: File) {
-    setUploading(true);
-    setErrors((e) => ({ ...e, idImageUrl: "" }));
+  const [uploadingSide, setUploadingSide] = useState<"front" | "back" | null>(null);
+
+  async function uploadIdFile(file: File, side: "front" | "back") {
+    setUploadingSide(side);
+    setErrors((e) => ({
+      ...e,
+      [side === "front" ? "idImageUrl" : "idImageBackUrl"]: "",
+    }));
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Échec du téléversement");
-      setData((d) => ({
-        ...d,
-        idImageUrl: json.url,
-        idImageKey: json.key,
-        idFileName: file.name,
-      }));
+      setData((d) =>
+        side === "front"
+          ? { ...d, idImageUrl: json.url, idImageKey: json.key, idFileName: file.name }
+          : {
+              ...d,
+              idImageBackUrl: json.url,
+              idImageBackKey: json.key,
+              idFileBackName: file.name,
+            }
+      );
     } catch (e) {
       setErrors((er) => ({
         ...er,
-        idImageUrl: e instanceof Error ? e.message : "Échec du téléversement",
+        [side === "front" ? "idImageUrl" : "idImageBackUrl"]:
+          e instanceof Error ? e.message : "Échec du téléversement",
       }));
     } finally {
-      setUploading(false);
+      setUploadingSide(null);
     }
   }
 
@@ -188,7 +227,12 @@ export default function BookingModal({ open, rooms, preselected, onClose }: Prop
     }
     if (step === 2) {
       if (!data.idNumber.trim()) e.idNumber = "Numéro requis";
-      if (!data.idImageUrl) e.idImageUrl = "Téléversez une copie";
+      if (!data.idImageUrl) e.idImageUrl = "Téléversez le recto";
+      const requiresBack =
+        data.idType === "CNI" || data.idType === "RESIDENCE_PERMIT";
+      if (requiresBack && !data.idImageBackUrl) {
+        e.idImageBackUrl = "Le verso est obligatoire pour ce document";
+      }
       if (!data.rgpdAccepted)
         e.rgpdAccepted = "Acceptation requise (loi ivoirienne)";
     }
@@ -219,6 +263,8 @@ export default function BookingModal({ open, rooms, preselected, onClose }: Prop
         idNumber: data.idNumber,
         idImageUrl: data.idImageUrl,
         idImageKey: data.idImageKey,
+        idImageBackUrl: data.idImageBackUrl || null,
+        idImageBackKey: data.idImageBackKey || null,
         rgpdAccepted: data.rgpdAccepted,
       });
       if (result.ok) {
@@ -295,7 +341,7 @@ export default function BookingModal({ open, rooms, preselected, onClose }: Prop
                   data={data}
                   update={update}
                   errors={errors}
-                  uploading={uploading}
+                  uploadingSide={uploadingSide}
                   onFile={uploadIdFile}
                 />
               )}
@@ -611,12 +657,14 @@ function StepIdentity({
   data,
   update,
   errors,
-  uploading,
+  uploadingSide,
   onFile,
 }: SubProps & {
-  uploading: boolean;
-  onFile: (f: File) => void;
+  uploadingSide: "front" | "back" | null;
+  onFile: (f: File, side: "front" | "back") => void;
 }) {
+  const requiresBack =
+    data.idType === "CNI" || data.idType === "RESIDENCE_PERMIT";
   return (
     <div className="space-y-5">
       <div className="rounded-2xl bg-teal-500/5 border border-teal-200 p-4 flex gap-3 items-start">
@@ -664,56 +712,49 @@ function StepIdentity({
         />
       </Field>
 
-      <Field
-        label="Téléverser une copie"
-        error={errors.idImageUrl}
-        hint="JPG, PNG, WEBP ou PDF — 8 Mo max. Recto lisible et net."
-      >
-        <label
-          className={`flex flex-col items-center justify-center gap-2 px-4 py-7 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
-            data.idImageUrl
-              ? "border-sand-500 bg-sand-500/5"
-              : "border-teal-200 bg-white hover:border-teal-400 hover:bg-teal-500/5"
-          }`}
-        >
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
-            className="hidden"
-            disabled={uploading}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onFile(f);
-            }}
+      <div>
+        <div className="text-teal-700 text-sm font-medium mb-2">
+          Photos de la pièce
+          <span className="text-teal-500/80 text-xs font-normal ml-2">
+            JPG, PNG, WEBP ou PDF — 8 Mo max
+          </span>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <UploadZone
+            side="front"
+            label="Recto"
+            required
+            url={data.idImageUrl}
+            fileName={data.idFileName}
+            uploading={uploadingSide === "front"}
+            disabled={uploadingSide !== null}
+            onFile={onFile}
+            error={errors.idImageUrl}
           />
-          {uploading ? (
-            <>
-              <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
-              <div className="text-teal-700 text-sm font-medium">
-                Téléversement en cours…
-              </div>
-            </>
-          ) : data.idImageUrl ? (
-            <>
-              <FileCheck2 className="w-7 h-7 text-sand-600" />
-              <div className="text-teal-700 text-sm font-medium break-all px-2 text-center">
-                {data.idFileName}
-              </div>
-              <div className="text-teal-500 text-xs">Cliquez pour remplacer</div>
-            </>
-          ) : (
-            <>
-              <Upload className="w-7 h-7 text-teal-400" />
-              <div className="text-teal-700 text-sm font-medium text-center">
-                Cliquez ou prenez en photo votre pièce
-              </div>
-              <div className="text-teal-500 text-xs text-center">
-                Document entier, bien lisible
-              </div>
-            </>
-          )}
-        </label>
-      </Field>
+          <UploadZone
+            side="back"
+            label="Verso"
+            required={requiresBack}
+            url={data.idImageBackUrl}
+            fileName={data.idFileBackName}
+            uploading={uploadingSide === "back"}
+            disabled={uploadingSide !== null}
+            onFile={onFile}
+            error={errors.idImageBackUrl}
+            hint={
+              !requiresBack
+                ? "Optionnel pour ce type de document"
+                : undefined
+            }
+          />
+        </div>
+        {requiresBack && (
+          <div className="text-teal-500/80 text-xs mt-2">
+            Le verso est obligatoire pour la <strong>CNI</strong> et la{" "}
+            <strong>carte de séjour</strong>.
+          </div>
+        )}
+      </div>
 
       <label className="flex gap-3 items-start cursor-pointer">
         <input
@@ -764,7 +805,14 @@ function StepRecap({
         <Row label="Voyageurs" value={data.guests} />
         <Row label="Voyageur" value={data.fullName} />
         <Row label="Contact" value={`${data.email} · ${data.phone}`} />
-        <Row label="Pièce" value={`${data.idType} · ${data.idNumber}`} />
+        <Row
+          label="Pièce"
+          value={`${
+            ID_TYPES.find((t) => t.value === data.idType)?.label ?? data.idType
+          } · ${data.idNumber}${
+            data.idImageBackUrl ? " (recto + verso)" : " (recto)"
+          }`}
+        />
         <div className="border-t border-teal-100 mt-3 pt-3 space-y-1">
           <div className="flex justify-between text-sm text-teal-600">
             <span>Sous-total ({nights} nuit{nights > 1 ? "s" : ""})</span>
@@ -812,6 +860,94 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="text-teal-700 font-medium text-right break-all">
         {value || "—"}
       </span>
+    </div>
+  );
+}
+
+function UploadZone({
+  side,
+  label,
+  required,
+  url,
+  fileName,
+  uploading,
+  disabled,
+  onFile,
+  error,
+  hint,
+}: {
+  side: "front" | "back";
+  label: string;
+  required: boolean;
+  url: string;
+  fileName: string;
+  uploading: boolean;
+  disabled: boolean;
+  onFile: (f: File, side: "front" | "back") => void;
+  error?: string;
+  hint?: string;
+}) {
+  return (
+    <div>
+      <label
+        className={`flex flex-col items-center justify-center gap-1.5 px-3 py-6 rounded-xl border-2 border-dashed cursor-pointer transition-colors min-h-[150px] ${
+          disabled && !uploading
+            ? "opacity-60 cursor-not-allowed"
+            : url
+            ? "border-sand-500 bg-sand-500/5"
+            : "border-teal-200 bg-white hover:border-teal-400 hover:bg-teal-500/5"
+        }`}
+      >
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,application/pdf"
+          className="hidden"
+          disabled={disabled}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFile(f, side);
+          }}
+        />
+        <div className="text-[10px] uppercase tracking-widest text-teal-500 font-semibold">
+          {label}{" "}
+          {required ? (
+            <span className="text-red-500">*</span>
+          ) : (
+            <span className="text-teal-400 normal-case font-normal">(optionnel)</span>
+          )}
+        </div>
+        {uploading ? (
+          <>
+            <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
+            <div className="text-teal-700 text-xs font-medium">
+              Téléversement…
+            </div>
+          </>
+        ) : url ? (
+          <>
+            <FileCheck2 className="w-6 h-6 text-sand-600" />
+            <div className="text-teal-700 text-xs font-medium break-all px-1 text-center line-clamp-2">
+              {fileName}
+            </div>
+            <div className="text-teal-500 text-[11px]">Remplacer</div>
+          </>
+        ) : (
+          <>
+            <Upload className="w-6 h-6 text-teal-400" />
+            <div className="text-teal-700 text-xs font-medium text-center">
+              Cliquez ou prenez en photo
+            </div>
+          </>
+        )}
+      </label>
+      {hint && !error && (
+        <div className="text-teal-500/80 text-[11px] mt-1">{hint}</div>
+      )}
+      {error && (
+        <div className="text-red-600 text-[11px] mt-1 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" /> {error}
+        </div>
+      )}
     </div>
   );
 }

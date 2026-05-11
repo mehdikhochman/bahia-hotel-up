@@ -99,8 +99,8 @@ export default function RoomForm({
         />
       </Field>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <Field label="Capacité" error={err("capacity")}>
+      <div className="grid sm:grid-cols-3 gap-4">
+        <Field label="Capacité (pers.)" error={err("capacity")}>
           <input
             required
             type="number"
@@ -118,6 +118,21 @@ export default function RoomForm({
             name="surfaceSqm"
             defaultValue={initial?.surfaceSqm ?? 40}
             min={5}
+            className={inputCls}
+          />
+        </Field>
+        <Field
+          label="Unités identiques"
+          error={err("totalUnits")}
+          hint="Ex : 5 chambres identiques de cette catégorie"
+        >
+          <input
+            required
+            type="number"
+            name="totalUnits"
+            defaultValue={initial?.totalUnits ?? 1}
+            min={1}
+            max={100}
             className={inputCls}
           />
         </Field>
