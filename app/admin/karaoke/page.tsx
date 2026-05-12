@@ -87,22 +87,22 @@ export default async function AdminKaraokePage() {
                       className="p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-3"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="text-teal-700 font-medium">
+                        <div className="text-teal-700 font-medium break-words">
                           {r.fullName}{" "}
                           <span className="text-teal-500 font-normal">
                             · {r.partySize} pers.
                           </span>
                         </div>
-                        <div className="text-teal-500 text-xs">
+                        <div className="text-teal-500 text-xs break-words">
                           {r.phone}
                           {r.email && ` · ${r.email}`}
                         </div>
                         {r.notes && (
-                          <div className="text-teal-600 text-xs italic mt-1">
+                          <div className="text-teal-600 text-xs italic mt-1 break-words">
                             « {r.notes} »
                           </div>
                         )}
-                        <div className="text-teal-400 text-[11px] mt-1 font-mono">
+                        <div className="text-teal-400 text-[11px] mt-1 font-mono break-all">
                           {r.reference} · {formatDateTime(r.createdAt)}
                         </div>
                       </div>

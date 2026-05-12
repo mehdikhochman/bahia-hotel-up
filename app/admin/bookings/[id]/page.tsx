@@ -265,12 +265,12 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-teal-100 p-5 md:p-6">
+    <div className="bg-white rounded-2xl border border-teal-100 p-4 sm:p-5 md:p-6 min-w-0 max-w-full overflow-hidden">
       <div className="flex items-center gap-2 mb-4 text-teal-700">
-        {Icon && <Icon className="w-4 h-4 text-sand-600" />}
-        <h2 className="font-display text-lg">{title}</h2>
+        {Icon && <Icon className="w-4 h-4 text-sand-600 shrink-0" />}
+        <h2 className="font-display text-lg truncate">{title}</h2>
       </div>
-      <div className="space-y-1.5">{children}</div>
+      <div className="space-y-1.5 min-w-0">{children}</div>
     </div>
   );
 }
@@ -285,12 +285,12 @@ function Row({
   icon?: typeof Mail;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:justify-between sm:gap-3 py-1.5 text-sm gap-0.5">
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:gap-3 py-1.5 text-sm gap-0.5 min-w-0">
       <span className="text-teal-500 flex items-center gap-1.5 shrink-0 text-xs sm:text-sm">
-        {Icon && <Icon className="w-3.5 h-3.5" />}
-        {label}
+        {Icon && <Icon className="w-3.5 h-3.5 shrink-0" />}
+        <span className="truncate">{label}</span>
       </span>
-      <span className="text-teal-700 font-medium sm:text-right break-words sm:break-all min-w-0">
+      <span className="text-teal-700 font-medium sm:text-right break-all min-w-0 max-w-full">
         {value}
       </span>
     </div>

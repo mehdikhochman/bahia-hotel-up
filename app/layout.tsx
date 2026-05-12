@@ -35,7 +35,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body className="min-h-screen bg-ivory-100 antialiased">{children}</body>
+      <body className="min-h-screen bg-ivory-100 antialiased overflow-x-hidden">
+        {children}
+      </body>
     </html>
   );
 }
