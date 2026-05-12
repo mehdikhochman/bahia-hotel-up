@@ -49,6 +49,19 @@ button,
 select,
 textarea {
   font-family: inherit;
+  min-width: 0; /* iOS Safari likes to enforce a min-width on date/time inputs */
+}
+
+/* iOS Safari native pickers have a default minimum width that breaks w-full */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
 }
 
 button {

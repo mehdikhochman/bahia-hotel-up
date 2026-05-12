@@ -323,7 +323,7 @@ export default function BookingModal({ open, rooms, preselected, onClose }: Prop
               </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-4 md:px-8 py-4 md:py-6 overscroll-contain">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-4 md:py-6 overscroll-contain min-w-0">
               {step === 0 && (
                 <StepStay
                   data={data}
@@ -411,7 +411,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <div className="text-teal-700 text-sm font-medium mb-1.5">{label}</div>
       {children}
       {hint && !error && (
@@ -419,7 +419,8 @@ function Field({
       )}
       {error && (
         <div className="text-red-600 text-xs mt-1 flex items-center gap-1">
-          <AlertCircle className="w-3.5 h-3.5" /> {error}
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          <span className="break-words">{error}</span>
         </div>
       )}
     </label>
@@ -464,10 +465,10 @@ function StepStay({
         </select>
       </Field>
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4 min-w-0">
         <Field label="Arrivée" error={errors.checkIn}>
-          <div className="relative">
-            <Calendar className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-teal-400" />
+          <div className="relative min-w-0">
+            <Calendar className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-teal-400 pointer-events-none" />
             <input
               type="date"
               className={`${inputCls} pl-10`}
@@ -478,8 +479,8 @@ function StepStay({
           </div>
         </Field>
         <Field label="Départ" error={errors.checkOut}>
-          <div className="relative">
-            <Calendar className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-teal-400" />
+          <div className="relative min-w-0">
+            <Calendar className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-teal-400 pointer-events-none" />
             <input
               type="date"
               className={`${inputCls} pl-10`}
