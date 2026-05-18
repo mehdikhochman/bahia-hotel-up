@@ -14,6 +14,16 @@ export const maxDuration = 30;
  * — webm/opus, mp4, etc.). Returns { text, language? }.
  */
 export async function POST(req: Request) {
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json(
+      {
+        error:
+          "Transcription vocale indisponible. OPENAI_API_KEY non configurée (OpenRouter ne supporte pas Whisper).",
+      },
+      { status: 503 }
+    );
+  }
+
   const ip = getClientIp();
   const limit = await checkRateLimit("voice", ip, 10, "5 m");
   if (!limit.ok) {

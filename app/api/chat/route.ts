@@ -7,6 +7,7 @@ import {
 import { prisma } from "@/lib/db";
 import { buildSystemPrompt } from "@/lib/ai/persona";
 import { buildTools } from "@/lib/ai/tools";
+import { getChatModel } from "@/lib/ai/client";
 import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
@@ -82,11 +83,21 @@ export async function POST(req: Request) {
 
   const tools = buildTools(sessionId);
 
+  let model;
+  try {
+    model = getChatModel();
+  } catch (e) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "Le concierge n'est pas encore configuré. Définissez OPENROUTER_API_KEY ou OPENAI_API_KEY.",
+      }),
+      { status: 503, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const result = streamText({
-    // Plain "provider/model" string — routed through Vercel AI Gateway
-    // automatically when AI_GATEWAY_API_KEY or OIDC is present, otherwise
-    // falls back to OPENAI_API_KEY.
-    model: "openai/gpt-4o-mini",
+    model,
     system: buildSystemPrompt(new Date()),
     messages: convertToModelMessages(body.messages),
     tools,
