@@ -222,8 +222,11 @@ export default function IyaChat() {
                 )}
 
                 {error && (
-                  <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-red-700 text-xs">
-                    Une erreur est survenue. Réessayez.
+                  <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-red-700 text-xs space-y-1">
+                    <div className="font-semibold">Erreur Iya</div>
+                    <div className="text-red-600/90 break-words">
+                      {error.message || "Réessayez dans un instant."}
+                    </div>
                   </div>
                 )}
               </div>
