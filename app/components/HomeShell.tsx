@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
 import Navbar from "./Navbar";
 import Hero from "./Hero";
 import Accommodations from "./Accommodations";
@@ -10,20 +9,12 @@ import Experience from "./Experience";
 import Footer from "./Footer";
 import BookingModal from "./BookingModal";
 import IyaChat from "./IyaChat";
+import BookingDeepLink, { type BookingPrefill } from "./BookingDeepLink";
 import type { SerializedRoom } from "@/types";
 
 type Props = { rooms: SerializedRoom[] };
 
-export type BookingPrefill = {
-  checkIn?: string;
-  checkOut?: string;
-  guests?: number;
-};
-
 export default function HomeShell({ rooms }: Props) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
   const [bookingOpen, setBookingOpen] = useState(false);
   const [preselected, setPreselected] = useState<SerializedRoom | null>(null);
   const [prefill, setPrefill] = useState<BookingPrefill>({});
@@ -36,32 +27,6 @@ export default function HomeShell({ rooms }: Props) {
     setPrefill(prefillData);
     setBookingOpen(true);
   };
-
-  // Handle deep links from Iya (?openBooking=1&room=...&checkIn=...&checkOut=...&guests=...)
-  useEffect(() => {
-    if (searchParams.get("openBooking") !== "1") return;
-
-    const roomId = searchParams.get("room");
-    const checkIn = searchParams.get("checkIn") ?? undefined;
-    const checkOut = searchParams.get("checkOut") ?? undefined;
-    const guestsParam = searchParams.get("guests");
-    const guests = guestsParam ? parseInt(guestsParam, 10) : undefined;
-
-    const room = roomId ? rooms.find((r) => r.id === roomId) ?? null : null;
-    open(room, { checkIn, checkOut, guests });
-
-    // Strip the query string so a refresh doesn't reopen the modal
-    const url = new URL(window.location.href);
-    [
-      "openBooking",
-      "room",
-      "checkIn",
-      "checkOut",
-      "guests",
-    ].forEach((k) => url.searchParams.delete(k));
-    router.replace(url.pathname + (url.hash || ""), { scroll: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, rooms]);
 
   return (
     <>
@@ -79,6 +44,13 @@ export default function HomeShell({ rooms }: Props) {
         onClose={() => setBookingOpen(false)}
       />
       <IyaChat />
+
+      {/* Reads URL params (?openBooking=1&room=...) from Iya deep links.
+          Isolated in Suspense so useSearchParams doesn't bail the page
+          out of static prerendering. */}
+      <Suspense fallback={null}>
+        <BookingDeepLink rooms={rooms} onOpen={open} />
+      </Suspense>
     </>
   );
 }
