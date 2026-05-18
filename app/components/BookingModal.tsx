@@ -28,6 +28,11 @@ type Props = {
   open: boolean;
   rooms: SerializedRoom[];
   preselected: SerializedRoom | null;
+  prefill?: {
+    checkIn?: string;
+    checkOut?: string;
+    guests?: number;
+  };
   onClose: () => void;
 };
 
@@ -90,15 +95,21 @@ const ID_TYPES: Array<{
 const inputCls =
   "w-full px-4 py-3 rounded-xl border border-teal-100 bg-white text-teal-700 focus:outline-none focus:ring-2 focus:ring-sand-500 focus:border-sand-500 transition-colors text-sm";
 
-export default function BookingModal({ open, rooms, preselected, onClose }: Props) {
+export default function BookingModal({
+  open,
+  rooms,
+  preselected,
+  prefill,
+  onClose,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormState>(() => ({
     roomId: preselected?.id || rooms[0]?.id || "",
-    checkIn: "",
-    checkOut: "",
-    guests: 2,
+    checkIn: prefill?.checkIn || "",
+    checkOut: prefill?.checkOut || "",
+    guests: prefill?.guests || 2,
     fullName: "",
     email: "",
     phone: "",
@@ -117,11 +128,18 @@ export default function BookingModal({ open, rooms, preselected, onClose }: Prop
   const [topError, setTopError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open && preselected) {
-      setData((d) => ({ ...d, roomId: preselected.id }));
+    if (open) {
+      setData((d) => ({
+        ...d,
+        ...(preselected ? { roomId: preselected.id } : {}),
+        ...(prefill?.checkIn ? { checkIn: prefill.checkIn } : {}),
+        ...(prefill?.checkOut ? { checkOut: prefill.checkOut } : {}),
+        ...(prefill?.guests ? { guests: prefill.guests } : {}),
+      }));
       setStep(0);
     }
-  }, [open, preselected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, preselected?.id, prefill?.checkIn, prefill?.checkOut, prefill?.guests]);
 
   useEffect(() => {
     if (!open) {

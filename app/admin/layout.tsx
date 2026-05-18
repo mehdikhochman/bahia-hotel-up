@@ -7,6 +7,7 @@ import {
   LogOut,
   Waves,
   Settings,
+  MessageCircle,
 } from "lucide-react";
 import { getAdminSession } from "@/lib/auth";
 
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
 const NAV = [
   { href: "/admin", label: "Accueil", icon: LayoutDashboard, exact: true },
   { href: "/admin/bookings", label: "Résa", icon: CalendarCheck },
+  { href: "/admin/chats", label: "Iya", icon: MessageCircle },
   { href: "/admin/karaoke", label: "Karaoké", icon: Mic },
   { href: "/admin/rooms", label: "Chambres", icon: BedDouble },
   { href: "/admin/settings", label: "Réglages", icon: Settings },
@@ -86,7 +88,7 @@ export default async function AdminLayout({
         className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-100 shadow-[0_-8px_24px_-12px_rgba(0,68,92,0.15)]"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <ul className="grid grid-cols-5">
+        <ul className="grid grid-cols-6">
           {NAV.map((n) => (
             <li key={n.href}>
               <Link
