@@ -26,7 +26,12 @@ export function getChatModel(): LanguageModel {
       },
     });
     const model = process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini";
-    return openrouter(model);
+    // IMPORTANT: use .chat() to force the Chat Completions API. The AI SDK v5
+    // default (openrouter(model)) targets OpenAI's new /responses endpoint,
+    // which OpenRouter does NOT support — it only speaks /chat/completions.
+    // Without this, the first turn works but any follow-up that includes a
+    // tool result fails with "Provider returned error".
+    return openrouter.chat(model);
   }
 
   if (process.env.OPENAI_API_KEY) {
