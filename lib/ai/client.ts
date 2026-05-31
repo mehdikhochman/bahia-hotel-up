@@ -22,7 +22,7 @@ export function getChatModel(): LanguageModel {
         "HTTP-Referer":
           process.env.NEXT_PUBLIC_SITE_URL ??
           "https://bahia-hotel-up.vercel.app",
-        "X-Title": "Bahia Hotel — Iya Concierge",
+        "X-Title": "Bahia Hotel - Iya Concierge",
       },
     });
     const model = process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini";
