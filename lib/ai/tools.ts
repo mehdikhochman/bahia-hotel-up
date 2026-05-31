@@ -286,6 +286,140 @@ export function buildTools(sessionId: string) {
       },
     }),
 
+    prepareBooking: tool({
+      description:
+        "Prépare une réservation COMPLÈTE à finaliser directement dans le chat. À n'appeler QUE lorsque tu as recueilli TOUTES ces informations en conversation : la chambre/villa choisie, les dates d'arrivée et de départ, le nombre de voyageurs, ET le nom complet, l'email, le numéro de téléphone et la nationalité du voyageur principal. L'outil vérifie la disponibilité en temps réel, calcule le prix exact (TVA + taxe de séjour) et affiche une carte interactive où le visiteur téléverse sa pièce d'identité (recto-verso), accepte le traitement légal des données et confirme. Ne demande JAMAIS les photos de pièce d'identité par message — la carte s'en charge. N'appelle pas cet outil s'il te manque une seule de ces informations : pose d'abord la question manquante.",
+      inputSchema: z.object({
+        roomIdOrSlug: z.string().describe("ID ou slug de l'hébergement choisi"),
+        checkIn: isoDate,
+        checkOut: isoDate,
+        guests: z.number().int().min(1).max(12).describe("Nombre de voyageurs"),
+        fullName: z
+          .string()
+          .min(2)
+          .describe("Nom complet tel qu'inscrit sur la pièce d'identité"),
+        email: z.string().email().describe("Email du voyageur"),
+        phone: z
+          .string()
+          .min(6)
+          .describe("Numéro de téléphone avec indicatif, ex. +225 07 00 00 00 00"),
+        nationality: z.string().min(2).describe("Nationalité du voyageur"),
+      }),
+      execute: async ({
+        roomIdOrSlug,
+        checkIn,
+        checkOut,
+        guests,
+        fullName,
+        email,
+        phone,
+        nationality,
+      }) => {
+        const room = await prisma.room.findFirst({
+          where: { OR: [{ id: roomIdOrSlug }, { slug: roomIdOrSlug }] },
+        });
+        if (!room || !room.isActive) {
+          return { ok: false, error: "Hébergement introuvable ou indisponible." };
+        }
+
+        const a = new Date(checkIn);
+        const b = new Date(checkOut);
+        const nights = Math.round((b.getTime() - a.getTime()) / 86_400_000);
+        if (nights <= 0) {
+          return { ok: false, error: "La date de départ doit suivre l'arrivée." };
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (a < today) {
+          return {
+            ok: false,
+            error: "La date d'arrivée ne peut pas être dans le passé.",
+          };
+        }
+        if (guests > room.capacity) {
+          return {
+            ok: false,
+            error: `${room.name} accueille jusqu'à ${room.capacity} voyageurs.`,
+          };
+        }
+
+        // Capacity-aware availability check — block only if every requested
+        // night is already saturated (totalUnits concurrent bookings).
+        const overlapping = await prisma.booking.findMany({
+          where: {
+            roomId: room.id,
+            status: {
+              in: ["PENDING_PAYMENT", "AWAITING_VERIFICATION", "CONFIRMED"],
+            },
+            AND: [{ checkIn: { lt: b } }, { checkOut: { gt: a } }],
+          },
+          select: { checkIn: true, checkOut: true },
+        });
+        const DAY = 86_400_000;
+        for (let t = a.getTime(); t < b.getTime(); t += DAY) {
+          const day = new Date(t);
+          const load = overlapping.filter(
+            (x) => x.checkIn <= day && x.checkOut > day
+          ).length;
+          if (load >= room.totalUnits) {
+            return {
+              ok: false,
+              error: `Plus aucune unité disponible le ${
+                day.toISOString().split("T")[0]
+              } pour ${room.name}.`,
+            };
+          }
+        }
+
+        const p = computePricing({
+          pricePerNight: room.pricePerNight,
+          nights,
+          guests,
+        });
+
+        // Best-effort: stash the contact details on the session so staff can
+        // follow up even if the visitor abandons before paying.
+        try {
+          await prisma.chatSession.update({
+            where: { id: sessionId },
+            data: { guestName: fullName, guestEmail: email, guestPhone: phone },
+          });
+        } catch {
+          // non-blocking
+        }
+
+        return {
+          ok: true,
+          booking: {
+            roomId: room.id,
+            roomName: room.name,
+            roomType: room.type,
+            imageUrl: room.imageUrl,
+            checkIn,
+            checkOut,
+            nights,
+            guests,
+            fullName,
+            email,
+            phone,
+            nationality,
+            pricePerNight: room.pricePerNight,
+            pricePerNightFormatted: formatXOF(room.pricePerNight),
+            subtotal: p.subtotal,
+            subtotalFormatted: formatXOF(p.subtotal),
+            vat: p.vat,
+            vatFormatted: formatXOF(p.vat),
+            cityTax: p.cityTax,
+            cityTaxFormatted: formatXOF(p.cityTax),
+            total: p.total,
+            totalFormatted: formatXOF(p.total),
+          },
+          message:
+            "Récapitulatif prêt et hébergement disponible. Une carte interactive s'affiche : invite le visiteur à y téléverser sa pièce d'identité (recto-verso), à accepter le traitement légal des données et à confirmer pour obtenir le QR de paiement Wave.",
+        };
+      },
+    }),
+
     captureLeadEmail: tool({
       description:
         "Enregistre l'email (et éventuellement le nom/téléphone) du visiteur s'il le fournit. À appeler quand le visiteur partage ses coordonnées.",

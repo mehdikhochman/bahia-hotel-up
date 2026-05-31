@@ -15,6 +15,7 @@ import {
 import { computePricing } from "@/lib/pricing";
 import { sendBookingCreated, sendWaveReferenceSubmitted } from "@/lib/email";
 import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
+import { getWaveSettings } from "@/lib/settings";
 
 export type ActionResult<T> =
   | { ok: true; data: T }
@@ -187,6 +188,73 @@ export async function createBooking(
       reference: booking.reference,
       totalXof: pricing.total,
       checkoutUrl: `/checkout/${booking.reference}`,
+    },
+  };
+}
+
+/**
+ * In-chat booking confirmation. Wraps `createBooking` (same validation,
+ * availability and pricing logic) and additionally returns everything the
+ * chat needs to render the Wave payment step inline: the price breakdown and
+ * the Wave settings (number, link, merchant, static QR image if configured).
+ */
+export async function confirmChatBooking(
+  raw: unknown
+): Promise<
+  ActionResult<{
+    bookingId: string;
+    reference: string;
+    totalXof: number;
+    checkoutUrl: string;
+    breakdown: {
+      subtotal: number;
+      vat: number;
+      cityTax: number;
+      nights: number;
+    };
+    wave: {
+      number: string;
+      link: string | null;
+      merchantName: string;
+      qrUrl: string | null;
+    };
+  }>
+> {
+  const created = await createBooking(raw);
+  if (!created.ok) return created;
+
+  const [wave, booking] = await Promise.all([
+    getWaveSettings(),
+    prisma.booking.findUnique({
+      where: { reference: created.data.reference },
+      select: {
+        subtotalXof: true,
+        vatXof: true,
+        cityTaxXof: true,
+        nights: true,
+      },
+    }),
+  ]);
+
+  return {
+    ok: true,
+    data: {
+      bookingId: created.data.bookingId,
+      reference: created.data.reference,
+      totalXof: created.data.totalXof,
+      checkoutUrl: created.data.checkoutUrl,
+      breakdown: {
+        subtotal: booking?.subtotalXof ?? 0,
+        vat: booking?.vatXof ?? 0,
+        cityTax: booking?.cityTaxXof ?? 0,
+        nights: booking?.nights ?? 0,
+      },
+      wave: {
+        number: wave.number,
+        link: wave.link || null,
+        merchantName: wave.merchantName,
+        qrUrl: process.env.NEXT_PUBLIC_WAVE_QR_URL || null,
+      },
     },
   };
 }

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import RoomCard, { type RoomCardData } from "./RoomCard";
 import VoiceButton from "./VoiceButton";
+import BookingFinalizer, { type BookingDraft } from "./BookingFinalizer";
 
 const SESSION_KEY = "bahia.iya.sessionId";
 const MESSAGES_KEY = "bahia.iya.messages";
@@ -338,6 +339,18 @@ function RenderMessage({ message }: { message: AnyMsg }) {
               ))}
             </div>
           );
+        }
+
+        if (
+          type === "tool-prepareBooking" &&
+          output &&
+          typeof output === "object" &&
+          "ok" in output &&
+          (output as { ok?: boolean }).ok === true &&
+          "booking" in output
+        ) {
+          const o = output as { booking: BookingDraft };
+          return <BookingFinalizer key={i} draft={o.booking} />;
         }
 
         if (type === "tool-prefillBooking" && output && typeof output === "object" && "deepLink" in output) {
