@@ -2,6 +2,23 @@ import { createOpenAI, openai } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
 
 /**
+ * Builds an OpenRouter-backed OpenAI provider. OpenRouter strongly recommends
+ * sending the Referer/Title headers for analytics and free-tier quota tracking.
+ */
+function openrouterProvider() {
+  return createOpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: process.env.OPENROUTER_API_KEY,
+    headers: {
+      "HTTP-Referer":
+        process.env.NEXT_PUBLIC_SITE_URL ??
+        "https://bahia-hotel-up.vercel.app",
+      "X-Title": "Bahia Hotel - Iya Concierge",
+    },
+  });
+}
+
+/**
  * Resolves the chat model based on whatever credentials are configured:
  *
  *   • OPENROUTER_API_KEY → proxy via openrouter.ai (preferred when set —
@@ -13,29 +30,40 @@ import type { LanguageModel } from "ai";
  */
 export function getChatModel(): LanguageModel {
   if (process.env.OPENROUTER_API_KEY) {
-    const openrouter = createOpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY,
-      // OpenRouter strongly recommends sending these headers for analytics
-      // and free-tier quota tracking.
-      headers: {
-        "HTTP-Referer":
-          process.env.NEXT_PUBLIC_SITE_URL ??
-          "https://bahia-hotel-up.vercel.app",
-        "X-Title": "Bahia Hotel - Iya Concierge",
-      },
-    });
     const model = process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini";
     // IMPORTANT: use .chat() to force the Chat Completions API. The AI SDK v5
     // default (openrouter(model)) targets OpenAI's new /responses endpoint,
     // which OpenRouter does NOT support — it only speaks /chat/completions.
     // Without this, the first turn works but any follow-up that includes a
     // tool result fails with "Provider returned error".
-    return openrouter.chat(model);
+    return openrouterProvider().chat(model);
   }
 
   if (process.env.OPENAI_API_KEY) {
     const model = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+    return openai(model);
+  }
+
+  throw new Error(
+    "No AI provider configured. Set OPENROUTER_API_KEY or OPENAI_API_KEY."
+  );
+}
+
+/**
+ * Resolves the vision model used for OCR / document reading (e.g. auto-filling
+ * ID fields from an uploaded identity document). gpt-4o-mini supports image
+ * inputs and is cheap enough for per-upload calls. Overridable via
+ * OPENROUTER_VISION_MODEL / OPENAI_VISION_MODEL.
+ */
+export function getVisionModel(): LanguageModel {
+  if (process.env.OPENROUTER_API_KEY) {
+    const model =
+      process.env.OPENROUTER_VISION_MODEL ?? "openai/gpt-4o-mini";
+    return openrouterProvider().chat(model);
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    const model = process.env.OPENAI_VISION_MODEL ?? "gpt-4o-mini";
     return openai(model);
   }
 

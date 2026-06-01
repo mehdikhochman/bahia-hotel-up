@@ -14,6 +14,7 @@ import {
   Smartphone,
   Calendar,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { confirmChatBooking, submitWaveReference } from "@/app/actions/booking";
 import { formatXOF } from "@/lib/utils";
@@ -63,6 +64,19 @@ type PaymentResult = {
 };
 
 type Phase = "identity" | "payment" | "done";
+
+/** Structured fields returned by /api/identity/extract (vision OCR). */
+type OcrFields = {
+  isIdDocument: boolean;
+  legible: boolean;
+  idType: IdType | null;
+  idNumber: string | null;
+  fullName: string | null;
+  nationality: string | null;
+  expiryDate: string | null;
+  confidence: "high" | "medium" | "low";
+  concerns: string[];
+};
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("fr-FR", {
@@ -163,6 +177,9 @@ function IdentityStep({
   const [uploading, setUploading] = useState<"front" | "back" | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [topError, setTopError] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false);
+  const [ocrNotice, setOcrNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const requiresBack = idType === "CNI" || idType === "RESIDENCE_PERMIT";
@@ -177,8 +194,14 @@ function IdentityStep({
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Échec du téléversement");
       const stored = { url: json.url, key: json.key, name: file.name };
-      if (side === "front") setFront(stored);
-      else setBack(stored);
+      if (side === "front") {
+        setFront(stored);
+        // Fire vision OCR on the recto to pre-fill type + number (best-effort;
+        // any failure silently degrades to manual entry).
+        void runOcr(stored, file.type);
+      } else {
+        setBack(stored);
+      }
     } catch (e) {
       setErrors((er) => ({
         ...er,
@@ -186,6 +209,58 @@ function IdentityStep({
       }));
     } finally {
       setUploading(null);
+    }
+  }
+
+  async function runOcr(
+    stored: { url: string; key: string },
+    contentType: string
+  ) {
+    setReading(true);
+    setAutoFilled(false);
+    setOcrNotice(null);
+    try {
+      const res = await fetch("/api/identity/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: stored.url,
+          key: stored.key,
+          contentType,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) return; // PDF skipped, rate-limited or error → manual entry
+      const f = json.fields as OcrFields;
+
+      let filled = false;
+      if (f.idType) {
+        setIdType(f.idType);
+        filled = true;
+      }
+      if (f.idNumber) {
+        setIdNumber(f.idNumber);
+        setErrors((er) => ({ ...er, idNumber: "" }));
+        filled = true;
+      }
+      setAutoFilled(filled);
+
+      const notices: string[] = [];
+      if (!f.isIdDocument) {
+        notices.push(
+          "Cette image ne ressemble pas à une pièce d'identité — vérifiez le fichier."
+        );
+      } else if (!f.legible) {
+        notices.push(
+          "Photo peu lisible — utilisez une image nette et bien éclairée si possible."
+        );
+      }
+      for (const c of f.concerns ?? []) notices.push(c);
+      setOcrNotice(notices.length ? notices.join(" ") : null);
+    } catch {
+      // ignore — manual entry remains available
+    } finally {
+      setReading(false);
     }
   }
 
@@ -265,7 +340,9 @@ function IdentityStep({
         <ShieldCheck className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
         <div className="text-teal-700 text-[11px] leading-relaxed">
           Enregistrement légal des voyageurs (Loi ivoirienne n° 2013-450). Vos
-          données sont chiffrées et conservées de façon sécurisée.
+          données sont chiffrées et conservées de façon sécurisée. La photo du
+          recto est lue automatiquement pour pré-remplir le formulaire — vous
+          gardez la main sur chaque champ.
         </div>
       </div>
 
@@ -332,6 +409,26 @@ function IdentityStep({
         />
       </div>
 
+      {/* OCR status */}
+      {reading && (
+        <div className="mt-2 flex items-center gap-2 text-teal-600 text-[11px]">
+          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+          Lecture de la pièce…
+        </div>
+      )}
+      {!reading && autoFilled && (
+        <div className="mt-2 flex items-center gap-1.5 text-sand-700 text-[11px]">
+          <Sparkles className="w-3.5 h-3.5 shrink-0" />
+          Lu automatiquement — vérifiez les champs ci-dessus.
+        </div>
+      )}
+      {!reading && ocrNotice && (
+        <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-amber-700 text-[11px] flex items-start gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          {ocrNotice}
+        </div>
+      )}
+
       {/* RGPD */}
       <label className="flex gap-2 items-start cursor-pointer mt-3">
         <input
@@ -345,7 +442,9 @@ function IdentityStep({
         />
         <span className="text-teal-700 text-[11px] leading-relaxed">
           J'accepte que Bahia conserve mes données d'identité aux fins de la
-          déclaration légale des voyageurs (Loi n° 2013-450 / RGPD).
+          déclaration légale des voyageurs (Loi n° 2013-450 / RGPD), et que la
+          photo de ma pièce soit lue automatiquement pour pré-remplir ce
+          formulaire.
         </span>
       </label>
       <FieldError msg={errors.rgpd} />
