@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -124,6 +124,42 @@ function computeMismatches(
   return out;
 }
 
+/**
+ * Builds the staff verification flag persisted with the booking. Crucially, a
+ * FAILED or skipped auto-read must NOT look like a clean pass: if the document
+ * was never verified by the model we flag it for manual control. This keeps the
+ * security guarantee on the server-side flag, independent of the (noisy) live
+ * UI verdict. Returns null only when the document was actually read and nothing
+ * looked off.
+ */
+function buildVerificationNote(args: {
+  ocr: OcrFields | null;
+  ocrAttempted: boolean;
+  ocrFailed: boolean;
+  mismatches: string[];
+}): string | null {
+  const { ocr, ocrAttempted, ocrFailed, mismatches } = args;
+  const flags: string[] = [];
+
+  if (ocrAttempted && (ocrFailed || !ocr)) {
+    flags.push(
+      "Lecture automatique de la pièce indisponible — pièce non vérifiée par l'IA."
+    );
+  }
+  if (ocr) {
+    if (!ocr.isIdDocument) {
+      flags.push("L'image téléversée ne semble pas être une pièce d'identité.");
+    } else if (!ocr.legible) {
+      flags.push("Pièce peu lisible.");
+    }
+    flags.push(...mismatches);
+    if (mismatches.length && ocr.matchReason) flags.push(ocr.matchReason);
+  }
+
+  if (!flags.length) return null;
+  return `Contrôle requis : ${flags.join(" ")}`.slice(0, 600);
+}
+
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("fr-FR", {
     day: "numeric",
@@ -227,6 +263,10 @@ function IdentityStep({
   const [autoFilled, setAutoFilled] = useState(false);
   const [ocrNotice, setOcrNotice] = useState<string | null>(null);
   const [ocr, setOcr] = useState<OcrFields | null>(null);
+  const [ocrFailed, setOcrFailed] = useState(false);
+  // Monotonic counter so a slow earlier OCR response can't overwrite the
+  // result of a newer upload (race when the guest swaps photos quickly).
+  const ocrSeq = useRef(0);
   const [pending, startTransition] = useTransition();
 
   const requiresBack = idType === "CNI" || idType === "RESIDENCE_PERMIT";
@@ -273,9 +313,13 @@ function IdentityStep({
     stored: { url: string; key: string },
     contentType: string
   ) {
+    const seq = ++ocrSeq.current;
+    const isStale = () => seq !== ocrSeq.current;
+
     setReading(true);
     setAutoFilled(false);
     setOcrNotice(null);
+    setOcrFailed(false);
     setOcr(null);
     try {
       const res = await fetch("/api/identity/extract", {
@@ -292,7 +336,20 @@ function IdentityStep({
         }),
       });
       const json = await res.json();
-      if (!json.ok) return; // PDF skipped, rate-limited or error → manual entry
+      if (isStale()) return; // a newer upload superseded this read
+
+      if (!json.ok) {
+        // PDF skipped, rate-limited or model error. Never let this look like a
+        // pass — flag it explicitly so the guest knows it wasn't verified.
+        setOcrFailed(true);
+        setOcrNotice(
+          json.skipped
+            ? "Fichier PDF : lecture automatique impossible. Renseignez les champs — notre équipe vérifiera la pièce manuellement."
+            : "Lecture automatique indisponible pour l'instant. Renseignez les champs — notre équipe vérifiera la pièce manuellement."
+        );
+        return;
+      }
+
       const f = json.fields as OcrFields;
       setOcr(f);
 
@@ -321,9 +378,14 @@ function IdentityStep({
       for (const c of f.concerns ?? []) notices.push(c);
       setOcrNotice(notices.length ? notices.join(" ") : null);
     } catch {
-      // ignore — manual entry remains available
+      if (!isStale()) {
+        setOcrFailed(true);
+        setOcrNotice(
+          "Lecture automatique indisponible pour l'instant. Renseignez les champs — notre équipe vérifiera la pièce manuellement."
+        );
+      }
     } finally {
-      setReading(false);
+      if (!isStale()) setReading(false);
     }
   }
 
@@ -336,11 +398,12 @@ function IdentityStep({
     setErrors(e);
     if (Object.keys(e).length > 0) return;
 
-    const verificationNote = mismatches.length
-      ? `Données déclarées ≠ pièce lue : ${mismatches.join(" ")}${
-          ocr?.matchReason ? ` — ${ocr.matchReason}` : ""
-        }`.slice(0, 600)
-      : null;
+    const verificationNote = buildVerificationNote({
+      ocr,
+      ocrAttempted: !!front,
+      ocrFailed,
+      mismatches,
+    });
 
     setTopError(null);
     startTransition(async () => {
