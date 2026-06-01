@@ -115,6 +115,16 @@ model Payment {
   verifiedAt    DateTime?
   rejectedAt    DateTime?
   rejectReason  String?
+  // Wave receipt verification (AI-assisted, human-supervised). The vision agent
+  // reads the uploaded receipt and computes a green/orange/red verdict to guide
+  // the staff's manual check — it NEVER auto-confirms or auto-blocks a payment.
+  receiptUrl       String?
+  receiptKey       String?
+  receiptVerdict   String? // "green" | "orange" | "red"
+  receiptNote      String?
+  receiptAmountXof Int?
+  receiptSender    String?
+  receiptCheckedAt DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)

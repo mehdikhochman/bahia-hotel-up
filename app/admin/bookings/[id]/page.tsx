@@ -14,6 +14,7 @@ import {
   BedDouble,
   Users,
   Hash,
+  ReceiptText,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -210,6 +211,43 @@ export default async function BookingDetail({
                     }
                   />
                 )}
+
+                {booking.payment.receiptVerdict && (
+                  <div className="mt-3 pt-3 border-t border-teal-100">
+                    <ReceiptVerdictBadge
+                      verdict={booking.payment.receiptVerdict}
+                      note={booking.payment.receiptNote}
+                    />
+                    {booking.payment.receiptAmountXof != null && (
+                      <Row
+                        label="Montant lu (reçu)"
+                        value={formatXOF(booking.payment.receiptAmountXof)}
+                      />
+                    )}
+                    {booking.payment.receiptSender && (
+                      <Row
+                        label="Expéditeur (reçu)"
+                        value={booking.payment.receiptSender}
+                      />
+                    )}
+                    {booking.payment.receiptCheckedAt && (
+                      <Row
+                        label="Reçu analysé le"
+                        value={formatDateTime(booking.payment.receiptCheckedAt)}
+                      />
+                    )}
+                    {booking.payment.receiptUrl && (
+                      <a
+                        href={`/admin/api/scan/${booking.id}?doc=receipt`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500 hover:bg-teal-600 text-ivory-100 text-sm"
+                      >
+                        <ReceiptText className="w-4 h-4" /> Voir le reçu Wave
+                      </a>
+                    )}
+                  </div>
+                )}
               </>
             ) : (
               <p className="text-teal-500 text-sm">Aucun paiement.</p>
@@ -283,6 +321,50 @@ function Card({
         <h2 className="font-display text-lg truncate">{title}</h2>
       </div>
       <div className="space-y-1.5 min-w-0">{children}</div>
+    </div>
+  );
+}
+
+const RECEIPT_VERDICT: Record<
+  string,
+  { label: string; cls: string; icon: typeof Mail }
+> = {
+  green: {
+    label: "Reçu cohérent",
+    cls: "bg-emerald-50 border-emerald-200 text-emerald-700",
+    icon: CheckCircle2,
+  },
+  orange: {
+    label: "Reçu à vérifier",
+    cls: "bg-amber-50 border-amber-200 text-amber-700",
+    icon: AlertTriangle,
+  },
+  red: {
+    label: "Reçu incohérent",
+    cls: "bg-red-50 border-red-200 text-red-700",
+    icon: XCircle,
+  },
+};
+
+function ReceiptVerdictBadge({
+  verdict,
+  note,
+}: {
+  verdict: string;
+  note: string | null;
+}) {
+  const v = RECEIPT_VERDICT[verdict] ?? RECEIPT_VERDICT.orange;
+  const Icon = v.icon;
+  return (
+    <div className={`rounded-xl border p-3 text-xs leading-relaxed ${v.cls}`}>
+      <div className="flex items-center gap-1.5 font-semibold">
+        <Icon className="w-4 h-4 shrink-0" />
+        Vérification IA du reçu — {v.label}
+      </div>
+      {note && <div className="mt-1 opacity-90">{note}</div>}
+      <div className="mt-1 opacity-70">
+        Indicatif — validez le paiement manuellement.
+      </div>
     </div>
   );
 }

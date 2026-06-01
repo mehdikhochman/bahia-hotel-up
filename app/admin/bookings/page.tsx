@@ -19,6 +19,25 @@ const FILTERS: Array<{
   { id: "CANCELLED", label: "Annulées" },
 ];
 
+// Wave-receipt verdict → coloured dot in the list (AI-assisted, advisory only).
+const RECEIPT_DOT: Record<string, { cls: string; label: string }> = {
+  green: { cls: "bg-emerald-500", label: "Reçu Wave : cohérent" },
+  orange: { cls: "bg-amber-500", label: "Reçu Wave : à vérifier" },
+  red: { cls: "bg-red-500", label: "Reçu Wave : incohérent" },
+};
+
+function ReceiptDot({ verdict }: { verdict?: string | null }) {
+  if (!verdict) return null;
+  const v = RECEIPT_DOT[verdict];
+  if (!v) return null;
+  return (
+    <span
+      title={v.label}
+      className={`inline-block w-2 h-2 rounded-full shrink-0 ${v.cls}`}
+    />
+  );
+}
+
 export default async function BookingsPage({
   searchParams,
 }: {
@@ -120,6 +139,7 @@ export default async function BookingsPage({
                         {urgent && (
                           <AlertCircle className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                         )}
+                        <ReceiptDot verdict={b.payment?.receiptVerdict} />
                         <span className="font-mono text-xs text-teal-700 truncate">
                           {b.reference}
                         </span>
@@ -184,6 +204,7 @@ export default async function BookingsPage({
                           {urgent && (
                             <AlertCircle className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                           )}
+                          <ReceiptDot verdict={b.payment?.receiptVerdict} />
                           {b.reference}
                         </Link>
                         <div className="text-teal-500 text-[11px] mt-0.5">

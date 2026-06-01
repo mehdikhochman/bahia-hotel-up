@@ -16,6 +16,7 @@ import {
   Calendar,
   Users,
   Sparkles,
+  ReceiptText,
 } from "lucide-react";
 import { confirmChatBooking, submitWaveReference } from "@/app/actions/booking";
 import { formatXOF } from "@/lib/utils";
@@ -577,11 +578,68 @@ function PaymentStep({
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  // Wave receipt verification (AI-assisted, non-blocking).
+  const [receipt, setReceipt] = useState<{ name: string } | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verdict, setVerdict] = useState<{
+    verdict: "green" | "orange" | "red";
+    reasons: string[];
+  } | null>(null);
+  const [receiptNotice, setReceiptNotice] = useState<string | null>(null);
+
   function copyRef() {
     navigator.clipboard.writeText(result.reference).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
+  }
+
+  async function uploadReceipt(file: File) {
+    setReceiptNotice(null);
+    setVerdict(null);
+    setVerifying(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("draftReference", result.reference);
+      const up = await fetch("/api/upload", { method: "POST", body: fd });
+      const upJson = await up.json();
+      if (!up.ok) throw new Error(upJson.error || "Échec du téléversement");
+      setReceipt({ name: file.name });
+
+      const res = await fetch("/api/payment/verify-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: upJson.url,
+          key: upJson.key,
+          contentType: upJson.contentType,
+          bookingReference: result.reference,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setVerdict({ verdict: json.verdict, reasons: json.reasons ?? [] });
+        // Pre-fill the transaction id when the receipt reveals it.
+        if (json.transactionId && !waveRef.trim()) {
+          setWaveRef(String(json.transactionId));
+        }
+      } else if (json.skipped) {
+        setReceiptNotice(
+          "Reçu PDF enregistré — la lecture auto ne traite que les images. Notre équipe le vérifiera manuellement."
+        );
+      } else {
+        setReceiptNotice(
+          "Reçu enregistré. La lecture auto est indisponible — notre équipe vérifiera manuellement."
+        );
+      }
+    } catch (e) {
+      setReceiptNotice(
+        e instanceof Error ? e.message : "Échec du téléversement du reçu"
+      );
+    } finally {
+      setVerifying(false);
+    }
   }
 
   function submit() {
@@ -675,6 +733,42 @@ function PaymentStep({
         </button>
       </div>
 
+      {/* Wave receipt — AI-assisted verification (non-blocking) */}
+      <div className="mt-3">
+        <div className="text-teal-700 text-xs font-medium mb-1.5 flex items-center gap-1.5">
+          <ReceiptText className="w-3.5 h-3.5 text-sand-600" />
+          Reçu Wave (recommandé)
+        </div>
+        <UploadZone
+          label="Capture du reçu"
+          required={false}
+          stored={receipt}
+          uploading={verifying}
+          disabled={verifying || pending}
+          onFile={uploadReceipt}
+        />
+        <div className="text-teal-500/80 text-[10px] mt-1">
+          Capture d'écran de votre confirmation Wave : nous lisons le montant et
+          le destinataire pour accélérer la vérification.
+        </div>
+
+        {verifying && (
+          <div className="mt-2 flex items-center gap-2 text-teal-600 text-[11px]">
+            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+            Analyse du reçu…
+          </div>
+        )}
+
+        {!verifying && verdict && <ReceiptVerdict result={verdict} />}
+
+        {!verifying && receiptNotice && (
+          <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-amber-700 text-[11px] flex items-start gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            {receiptNotice}
+          </div>
+        )}
+      </div>
+
       {/* Wave transaction id */}
       <div className="mt-3">
         <div className="text-teal-700 text-xs font-medium mb-1.5">
@@ -760,6 +854,50 @@ function FieldError({ msg }: { msg?: string }) {
   return (
     <div className="text-red-600 text-[10px] mt-1 flex items-center gap-1">
       <AlertCircle className="w-3 h-3 shrink-0" /> {msg}
+    </div>
+  );
+}
+
+/** Green/orange/red verdict from the Wave receipt verifier (advisory only). */
+function ReceiptVerdict({
+  result,
+}: {
+  result: { verdict: "green" | "orange" | "red"; reasons: string[] };
+}) {
+  const styles = {
+    green: {
+      box: "bg-emerald-50 border-emerald-200 text-emerald-700",
+      icon: <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />,
+      title: "Reçu cohérent",
+    },
+    orange: {
+      box: "bg-amber-50 border-amber-200 text-amber-700",
+      icon: <AlertCircle className="w-3.5 h-3.5 shrink-0" />,
+      title: "Reçu à vérifier",
+    },
+    red: {
+      box: "bg-red-50 border-red-200 text-red-700",
+      icon: <ShieldAlert className="w-3.5 h-3.5 shrink-0" />,
+      title: "Reçu incohérent",
+    },
+  }[result.verdict];
+
+  return (
+    <div className={`mt-2 rounded-lg border p-2.5 text-[11px] ${styles.box}`}>
+      <div className="flex items-center gap-1.5 font-semibold">
+        {styles.icon}
+        {styles.title}
+      </div>
+      {result.reasons.length > 0 && (
+        <ul className="mt-1 list-disc pl-4 space-y-0.5">
+          {result.reasons.map((r, i) => (
+            <li key={i}>{r}</li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-1 opacity-80">
+        Vous pouvez valider — notre équipe confirme chaque paiement manuellement.
+      </div>
     </div>
   );
 }

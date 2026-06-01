@@ -100,6 +100,23 @@ function bookingTable(b: FullBooking) {
 const button = (href: string, label: string) =>
   `<a href="${href}" style="display:inline-block;background:#C9A96E;color:#003244;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:600;font-size:14px;">${label}</a>`;
 
+/** Coloured Wave-receipt verdict block for staff emails (advisory only). */
+function receiptVerdictBlock(b: FullBooking) {
+  const verdict = b.payment?.receiptVerdict;
+  if (!verdict) return "";
+  const palette: Record<string, { bg: string; border: string; color: string; label: string }> = {
+    green: { bg: "#ECFDF5", border: "#A7F3D0", color: "#065F46", label: "Reçu cohérent" },
+    orange: { bg: "#FFFBEB", border: "#FDE68A", color: "#92400E", label: "Reçu à vérifier" },
+    red: { bg: "#FEF2F2", border: "#FECACA", color: "#991B1B", label: "Reçu incohérent" },
+  };
+  const p = palette[verdict] ?? palette.orange;
+  const note = b.payment?.receiptNote
+    ? `<br/>${escapeHtml(b.payment.receiptNote)}`
+    : "";
+  return `<p style="background:${p.bg};border:1px solid ${p.border};color:${p.color};padding:12px;border-radius:10px;font-size:13px;">
+      <strong>Vérification IA du reçu — ${p.label}</strong> (indicatif, à confirmer manuellement)${note}</p>`;
+}
+
 // --------------------------------------------------------------------------
 // Public API
 // --------------------------------------------------------------------------
@@ -160,6 +177,7 @@ export async function sendWaveReferenceSubmitted(b: FullBooking) {
   if (STAFF_INBOX) {
     const staffBody = `
       <p><strong>Paiement Wave à vérifier</strong></p>
+      ${receiptVerdictBlock(b)}
       <p>Référence Wave soumise par le voyageur : <code style="background:#E6F2F6;padding:2px 8px;border-radius:4px;">${escapeHtml(
         b.payment?.waveReference || "—"
       )}</code></p>
