@@ -11,6 +11,12 @@ const bodySchema = z.object({
   url: z.string().min(1),
   key: z.string().min(1),
   contentType: z.string().min(1),
+  claims: z
+    .object({
+      fullName: z.string().max(120).optional().nullable(),
+      nationality: z.string().max(60).optional().nullable(),
+    })
+    .optional(),
 });
 
 /**
@@ -48,7 +54,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { url, key, contentType } = parsed.data;
+  const { url, key, contentType, claims } = parsed.data;
 
   // Only ever read files we produced under the id-scans/ prefix.
   if (!key.startsWith("id-scans/")) {
@@ -64,7 +70,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const fields = await extractIdFields({ url, key, contentType });
+    const fields = await extractIdFields({ url, key, contentType, claims });
     return NextResponse.json({ ok: true, fields });
   } catch (e) {
     console.error("[id-extract]", e);

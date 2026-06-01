@@ -53,6 +53,26 @@ export const idExtractionSchema = z.object({
     .describe(
       "Short human-readable flags (e.g. 'image floue', 'document expiré', 'numéro partiellement masqué'). Empty array if none."
     ),
+  // Security check: compare what is PRINTED on the document against the values
+  // the guest declared (passed in via `claims`). Decide AFTER reading the doc.
+  // Tolerate accents, case, given/family-name order and translated forms
+  // (e.g. "ivoirien" ≡ "Côte d'Ivoire"). Use "uncertain" when the document
+  // field is unreadable/absent — never invent a mismatch from a bad photo.
+  nameMatch: z
+    .enum(["match", "mismatch", "uncertain"])
+    .describe(
+      "Does the declared full name match the name printed on the document?"
+    ),
+  nationalityMatch: z
+    .enum(["match", "mismatch", "uncertain"])
+    .describe(
+      "Is the declared nationality consistent with the document? (mismatch e.g. declared 'ivoirien' but document is a foreign residence permit / shows another nationality)."
+    ),
+  matchReason: z
+    .string()
+    .describe(
+      "Short French explanation when nameMatch or nationalityMatch is 'mismatch' (cite what is read vs declared). Empty string if everything matches."
+    ),
 });
 
 export type IdExtraction = z.infer<typeof idExtractionSchema>;
@@ -61,6 +81,11 @@ type ExtractArgs = {
   url: string;
   key: string;
   contentType: string;
+  /** Values the guest declared, to cross-check against the scanned document. */
+  claims?: {
+    fullName?: string | null;
+    nationality?: string | null;
+  };
 };
 
 /**
@@ -74,6 +99,7 @@ export async function extractIdFields({
   url,
   key,
   contentType,
+  claims,
 }: ExtractArgs): Promise<IdExtraction> {
   let image: URL | string;
 
@@ -85,6 +111,15 @@ export async function extractIdFields({
     image = new URL(url);
   }
 
+  const declared =
+    claims && (claims.fullName || claims.nationality)
+      ? `\n\nLe voyageur a déclaré :\n- Nom complet : ${
+          claims.fullName ?? "(non fourni)"
+        }\n- Nationalité : ${
+          claims.nationality ?? "(non fournie)"
+        }\n\nAprès avoir lu le document, compare ces déclarations à ce qui est imprimé et renseigne nameMatch, nationalityMatch et matchReason.`
+      : "";
+
   const { object } = await generateObject({
     model: getVisionModel(),
     schema: idExtractionSchema,
@@ -93,14 +128,14 @@ export async function extractIdFields({
       {
         role: "system",
         content:
-          "Tu es un agent de lecture de pièces d'identité pour l'enregistrement légal des voyageurs d'un hôtel en Côte d'Ivoire. Tu lis UNIQUEMENT ce qui est visible sur le document. N'invente jamais une valeur : si un champ n'est pas lisible, renvoie null. Sois strict sur isIdDocument et legible — ils servent à détecter les fraudes et les photos floues.",
+          "Tu es un agent de sécurité chargé de lire les pièces d'identité pour l'enregistrement légal des voyageurs d'un hôtel en Côte d'Ivoire. Procède en deux temps : (1) lis UNIQUEMENT ce qui est visible sur le document et remplis les champs extraits — n'invente jamais, mets null si illisible ; (2) compare ensuite aux valeurs déclarées par le voyageur. Pour la comparaison, tolère les accents, la casse et l'ordre prénom/nom, et reconnais les formes traduites d'une nationalité (ex. « ivoirien » ≡ « Côte d'Ivoire »). Utilise « uncertain » quand le champ du document est illisible ou absent — ne déduis jamais un « mismatch » d'une simple photo floue. Sois strict sur isIdDocument et legible.",
       },
       {
         role: "user",
         content: [
           {
             type: "text",
-            text: "Lis cette pièce d'identité et extrais les champs structurés.",
+            text: `Lis cette pièce d'identité et extrais les champs structurés.${declared}`,
           },
           { type: "image", image },
         ],

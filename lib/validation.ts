@@ -75,6 +75,9 @@ export const bookingInputSchema = z
         message: "Vous devez accepter le traitement légal des données.",
       }),
     }),
+    // Optional flag produced by the in-chat ID verifier (declared data vs the
+    // scanned document). Persisted for manual staff review; never blocks.
+    verificationNote: z.string().trim().max(600).optional().nullable(),
   })
   .superRefine((v, ctx) => {
     const a = new Date(v.checkIn);

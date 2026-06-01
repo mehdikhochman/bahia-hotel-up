@@ -1,7 +1,13 @@
 import "server-only";
 
 import { Resend } from "resend";
-import type { Booking, Payment, Room, User } from "@prisma/client";
+import type {
+  Booking,
+  Identification,
+  Payment,
+  Room,
+  User,
+} from "@prisma/client";
 import { formatXOF } from "./utils";
 import { formatDate } from "./format";
 
@@ -9,6 +15,7 @@ type FullBooking = Booking & {
   user: User;
   room: Room;
   payment: Payment | null;
+  identification?: Identification | null;
 };
 
 const resendKey = process.env.RESEND_API_KEY;
@@ -114,8 +121,15 @@ export async function sendBookingCreated(b: FullBooking) {
   });
 
   if (STAFF_INBOX) {
+    const verifWarning = b.identification?.verificationNote
+      ? `<p style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;padding:12px;border-radius:10px;font-size:13px;">
+          <strong>⚠ Contrôle d'identité requis</strong><br/>${escapeHtml(
+            b.identification.verificationNote
+          )}</p>`
+      : "";
     const staffBody = `
       <p><strong>Nouvelle réservation</strong> en attente de paiement Wave.</p>
+      ${verifWarning}
       ${bookingTable(b)}
       <p>Voyageur : ${escapeHtml(b.user.fullName)} · ${escapeHtml(b.user.email)} · ${escapeHtml(b.user.phone)}</p>
       <p>${button(`${SITE_URL}/admin/bookings/${b.id}`, "Ouvrir dans le staff")}</p>

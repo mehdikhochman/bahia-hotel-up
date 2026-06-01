@@ -153,6 +153,7 @@ export async function createBooking(
             imageBackKey: input.idImageBackKey || null,
             rgpdAccepted: input.rgpdAccepted,
             acceptedAt: new Date(),
+            verificationNote: input.verificationNote || null,
           },
         },
         payment: {
@@ -171,7 +172,7 @@ export async function createBooking(
   // Fire-and-forget: emails should never block booking creation.
   const fullBooking = await prisma.booking.findUnique({
     where: { id: booking.id },
-    include: { user: true, room: true, payment: true },
+    include: { user: true, room: true, payment: true, identification: true },
   });
   if (fullBooking) {
     sendBookingCreated(fullBooking).catch((e) =>

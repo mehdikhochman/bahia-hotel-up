@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   XCircle,
   ShieldCheck,
+  AlertTriangle,
   FileText,
   Mail,
   Phone,
@@ -128,6 +129,17 @@ export default async function BookingDetail({
                       : "Refusé"
                   }
                 />
+                {booking.identification.verificationNote && (
+                  <div className="mt-3 rounded-xl bg-red-50 border border-red-200 p-3 flex gap-2 items-start">
+                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <div className="text-red-700 text-xs leading-relaxed">
+                      <div className="font-semibold mb-0.5">
+                        Contrôle requis — données déclarées ≠ pièce scannée
+                      </div>
+                      {booking.identification.verificationNote}
+                    </div>
+                  </div>
+                )}
                 <div className="mt-3 pt-3 border-t border-teal-100 flex flex-wrap items-center gap-2">
                   <a
                     href={`/admin/api/scan/${booking.id}`}

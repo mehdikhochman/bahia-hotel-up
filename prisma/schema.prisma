@@ -1,6 +1,3 @@
-// Bahia Hotel — Prisma schema
-// Production target: PostgreSQL (Neon, Supabase, Vercel Postgres, Railway).
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,9 +7,175 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --------------------------------------------------------------------------
-// Enums
-// --------------------------------------------------------------------------
+model User {
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  fullName            String
+  phone               String
+  nationality         String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  bookings            Booking[]
+  identifications     Identification[]
+  karaokeReservations KaraokeReservation[]
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  fullName     String
+  passwordHash String
+  role         AdminRole @default(STAFF)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Room {
+  id            String    @id @default(cuid())
+  slug          String    @unique
+  name          String
+  type          RoomType
+  tagline       String
+  description   String
+  pricePerNight Int
+  capacity      Int
+  surfaceSqm    Int
+  imageUrl      String
+  amenities     String[]
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  totalUnits    Int       @default(1)
+  bookings      Booking[]
+
+  @@index([type, isActive])
+}
+
+model Booking {
+  id             String          @id @default(cuid())
+  reference      String          @unique
+  userId         String
+  roomId         String
+  checkIn        DateTime        @db.Date
+  checkOut       DateTime        @db.Date
+  nights         Int
+  guests         Int
+  subtotalXof    Int             @default(0)
+  vatXof         Int             @default(0)
+  cityTaxXof     Int             @default(0)
+  totalXof       Int
+  status         BookingStatus   @default(PENDING_PAYMENT)
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  room           Room            @relation(fields: [roomId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  identification Identification?
+  payment        Payment?
+
+  @@index([userId])
+  @@index([roomId, checkIn, checkOut])
+  @@index([status])
+}
+
+model Identification {
+  id           String    @id @default(cuid())
+  bookingId    String    @unique
+  userId       String
+  fullName     String
+  idType       IdType
+  idNumber     String
+  imageUrl     String
+  imageKey     String?
+  rgpdAccepted Boolean   @default(false)
+  acceptedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  imageBackKey String?
+  imageBackUrl String?
+  // Set when the in-chat ID verifier finds the declared data does not match the
+  // scanned document (warn + manual staff review; the agent never auto-blocks).
+  verificationNote String?
+  booking      Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String        @unique
+  method        PaymentMethod @default(WAVE)
+  amountXof     Int
+  waveReference String?
+  status        PaymentStatus @default(PENDING)
+  submittedAt   DateTime?
+  verifiedAt    DateTime?
+  rejectedAt    DateTime?
+  rejectReason  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model ChatSession {
+  id         String        @id @default(cuid())
+  language   String?
+  guestName  String?
+  guestEmail String?
+  guestPhone String?
+  summary    String?
+  status     ChatStatus    @default(OPEN)
+  bookingRef String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  messages   ChatMessage[]
+
+  @@index([status, createdAt])
+  @@index([guestEmail])
+}
+
+model ChatMessage {
+  id         String      @id @default(cuid())
+  sessionId  String
+  role       ChatRole
+  content    String
+  toolName   String?
+  toolArgs   Json?
+  toolResult Json?
+  createdAt  DateTime    @default(now())
+  session    ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
+
+model KaraokeReservation {
+  id        String        @id @default(cuid())
+  reference String        @unique
+  userId    String?
+  fullName  String
+  phone     String
+  email     String?
+  date      DateTime      @db.Date
+  partySize Int
+  notes     String?
+  status    KaraokeStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user      User?         @relation(fields: [userId], references: [id])
+
+  @@index([date])
+}
 
 enum RoomType {
   VILLA
@@ -20,17 +183,17 @@ enum RoomType {
 }
 
 enum BookingStatus {
-  PENDING_PAYMENT        // ref generated, waiting for guest to pay via Wave
-  AWAITING_VERIFICATION  // guest submitted Wave reference, staff verifies
-  CONFIRMED              // payment verified — booking active
+  PENDING_PAYMENT
+  AWAITING_VERIFICATION
+  CONFIRMED
   CANCELLED
 }
 
 enum IdType {
-  CNI               // Carte Nationale d'Identité
+  CNI
   PASSPORT
-  CONSULAR_CARD     // Carte consulaire / attestation
-  RESIDENCE_PERMIT  // Carte de séjour
+  CONSULAR_CARD
+  RESIDENCE_PERMIT
 }
 
 enum PaymentMethod {
@@ -51,174 +214,10 @@ enum KaraokeStatus {
   CANCELLED
 }
 
-// --------------------------------------------------------------------------
-// Users
-// --------------------------------------------------------------------------
-
-model User {
-  id          String    @id @default(cuid())
-  email       String    @unique
-  fullName    String
-  phone       String
-  nationality String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  bookings            Booking[]
-  identifications     Identification[]
-  karaokeReservations KaraokeReservation[]
-}
-
 enum AdminRole {
   STAFF
   MANAGER
 }
-
-model AdminUser {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  fullName     String
-  passwordHash String
-  role         AdminRole @default(STAFF)
-  isActive     Boolean   @default(true)
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-}
-
-// --------------------------------------------------------------------------
-// Inventory
-// --------------------------------------------------------------------------
-
-model Room {
-  id            String    @id @default(cuid())
-  slug          String    @unique
-  name          String
-  type          RoomType
-  tagline       String
-  description   String
-  pricePerNight Int       // XOF, integer (no centimes)
-  capacity      Int
-  surfaceSqm    Int
-  imageUrl      String
-  amenities     String[]
-  totalUnits    Int       @default(1)  // number of identical physical units of this category
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  bookings Booking[]
-
-  @@index([type, isActive])
-}
-
-// --------------------------------------------------------------------------
-// Bookings
-// --------------------------------------------------------------------------
-
-model Booking {
-  id        String        @id @default(cuid())
-  reference String        @unique      // human-friendly: BHA-XXXXXXXX
-  userId    String
-  user      User          @relation(fields: [userId], references: [id])
-  roomId    String
-  room      Room          @relation(fields: [roomId], references: [id])
-
-  checkIn   DateTime  @db.Date
-  checkOut  DateTime  @db.Date
-  nights    Int
-  guests    Int
-
-  // Pricing breakdown — XOF, integers
-  subtotalXof Int @default(0)   // nights × pricePerNight (HT)
-  vatXof      Int @default(0)   // TVA 18 % CI
-  cityTaxXof  Int @default(0)   // Taxe de séjour
-  totalXof    Int               // subtotal + vat + cityTax
-
-  status    BookingStatus @default(PENDING_PAYMENT)
-  notes     String?
-
-  identification Identification?
-  payment        Payment?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([roomId, checkIn, checkOut])
-  @@index([status])
-}
-
-// --------------------------------------------------------------------------
-// Ivorian KYC compliance (Direction de la Surveillance du Territoire)
-// --------------------------------------------------------------------------
-
-model Identification {
-  id           String   @id @default(cuid())
-  bookingId    String   @unique
-  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
-
-  fullName     String   // as printed on the ID document
-  idType       IdType
-  idNumber     String
-  imageUrl     String   // recto (front) — signed Vercel Blob URL or local key
-  imageKey     String?  // recto storage key
-  imageBackUrl String?  // verso (back) — required for CNI / Carte de séjour
-  imageBackKey String?  // verso storage key
-
-  rgpdAccepted Boolean  @default(false)
-  acceptedAt   DateTime?
-
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([userId])
-}
-
-// --------------------------------------------------------------------------
-// Payments
-// --------------------------------------------------------------------------
-
-model Payment {
-  id            String        @id @default(cuid())
-  bookingId     String        @unique
-  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-
-  method        PaymentMethod @default(WAVE)
-  amountXof     Int
-  waveReference String?       // user-submitted Wave transaction ID
-  status        PaymentStatus @default(PENDING)
-  submittedAt   DateTime?
-  verifiedAt    DateTime?
-  rejectedAt    DateTime?
-  rejectReason  String?
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([status])
-}
-
-// --------------------------------------------------------------------------
-// Saturday Night Karaoke — table reservations
-// --------------------------------------------------------------------------
-
-// --------------------------------------------------------------------------
-// Key-value runtime settings — editable from /admin/settings without redeploy
-// --------------------------------------------------------------------------
-
-model Setting {
-  key       String   @id
-  value     String
-  updatedAt DateTime @updatedAt
-}
-
-// --------------------------------------------------------------------------
-// Iya — the AI concierge. Persisted conversations for staff visibility +
-// lead capture.
-// --------------------------------------------------------------------------
 
 enum ChatStatus {
   OPEN
@@ -231,56 +230,4 @@ enum ChatRole {
   ASSISTANT
   TOOL
   SYSTEM
-}
-
-model ChatSession {
-  id         String        @id @default(cuid())
-  language   String?       // ISO 639-1 detected by the model
-  guestName  String?
-  guestEmail String?
-  guestPhone String?
-  summary    String?       // auto-generated end-of-conversation summary
-  status     ChatStatus    @default(OPEN)
-  messages   ChatMessage[]
-  // Useful for staff triage: did this conversation lead to a booking?
-  bookingRef String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-
-  @@index([status, createdAt])
-  @@index([guestEmail])
-}
-
-model ChatMessage {
-  id        String      @id @default(cuid())
-  sessionId String
-  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role      ChatRole
-  content   String      @db.Text
-  toolName  String?
-  toolArgs  Json?
-  toolResult Json?
-  createdAt DateTime    @default(now())
-
-  @@index([sessionId, createdAt])
-}
-
-model KaraokeReservation {
-  id        String        @id @default(cuid())
-  reference String        @unique
-  userId    String?
-  user      User?         @relation(fields: [userId], references: [id])
-
-  fullName  String
-  phone     String
-  email     String?
-  date      DateTime      @db.Date  // a Saturday night
-  partySize Int
-  notes     String?
-
-  status    KaraokeStatus @default(PENDING)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-
-  @@index([date])
 }

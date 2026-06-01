@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import {
   ShieldCheck,
+  ShieldAlert,
   Upload,
   FileCheck2,
   Loader2,
@@ -76,7 +77,51 @@ type OcrFields = {
   expiryDate: string | null;
   confidence: "high" | "medium" | "low";
   concerns: string[];
+  nameMatch: "match" | "mismatch" | "uncertain";
+  nationalityMatch: "match" | "mismatch" | "uncertain";
+  matchReason: string;
 };
+
+const ID_LABEL: Record<IdType, string> = {
+  CNI: "CNI",
+  PASSPORT: "Passeport",
+  RESIDENCE_PERMIT: "Carte de séjour",
+  CONSULAR_CARD: "Carte consulaire",
+};
+
+const normalizeNum = (s: string) => s.replace(/[^a-z0-9]/gi, "").toUpperCase();
+
+/**
+ * Cross-checks the declared data against what the vision model read on the
+ * document. Name + nationality come from the model's own fuzzy verdict
+ * (accents / name order / translated nationalities); number + type are
+ * compared deterministically here. Returns one human-readable line per
+ * discrepancy. Never throws, never blocks — purely advisory + staff flag.
+ */
+function computeMismatches(
+  ocr: OcrFields,
+  cur: { idType: IdType; idNumber: string; fullName: string; nationality: string }
+): string[] {
+  const out: string[] = [];
+  if (ocr.nameMatch === "mismatch") {
+    out.push(`Nom déclaré « ${cur.fullName} » ne correspond pas à la pièce.`);
+  }
+  if (ocr.nationalityMatch === "mismatch") {
+    out.push(
+      `Nationalité déclarée « ${cur.nationality} » ne correspond pas à la pièce.`
+    );
+  }
+  if (ocr.idType && ocr.idType !== cur.idType) {
+    out.push(
+      `Type sélectionné (${ID_LABEL[cur.idType]}) ≠ type lu (${ID_LABEL[ocr.idType]}).`
+    );
+  }
+  const typed = cur.idNumber.trim();
+  if (ocr.idNumber && typed && normalizeNum(ocr.idNumber) !== normalizeNum(typed)) {
+    out.push(`Numéro saisi (${typed}) ≠ numéro lu (${ocr.idNumber}).`);
+  }
+  return out;
+}
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("fr-FR", {
@@ -180,9 +225,20 @@ function IdentityStep({
   const [reading, setReading] = useState(false);
   const [autoFilled, setAutoFilled] = useState(false);
   const [ocrNotice, setOcrNotice] = useState<string | null>(null);
+  const [ocr, setOcr] = useState<OcrFields | null>(null);
   const [pending, startTransition] = useTransition();
 
   const requiresBack = idType === "CNI" || idType === "RESIDENCE_PERMIT";
+
+  // Live cross-check of declared data vs the scanned document (advisory).
+  const mismatches = ocr
+    ? computeMismatches(ocr, {
+        idType,
+        idNumber,
+        fullName: draft.fullName,
+        nationality: draft.nationality,
+      })
+    : [];
 
   async function upload(file: File, side: "front" | "back") {
     setUploading(side);
@@ -219,6 +275,7 @@ function IdentityStep({
     setReading(true);
     setAutoFilled(false);
     setOcrNotice(null);
+    setOcr(null);
     try {
       const res = await fetch("/api/identity/extract", {
         method: "POST",
@@ -227,11 +284,16 @@ function IdentityStep({
           url: stored.url,
           key: stored.key,
           contentType,
+          claims: {
+            fullName: draft.fullName,
+            nationality: draft.nationality,
+          },
         }),
       });
       const json = await res.json();
       if (!json.ok) return; // PDF skipped, rate-limited or error → manual entry
       const f = json.fields as OcrFields;
+      setOcr(f);
 
       let filled = false;
       if (f.idType) {
@@ -273,6 +335,12 @@ function IdentityStep({
     setErrors(e);
     if (Object.keys(e).length > 0) return;
 
+    const verificationNote = mismatches.length
+      ? `Données déclarées ≠ pièce lue : ${mismatches.join(" ")}${
+          ocr?.matchReason ? ` — ${ocr.matchReason}` : ""
+        }`.slice(0, 600)
+      : null;
+
     setTopError(null);
     startTransition(async () => {
       const res = await confirmChatBooking({
@@ -291,6 +359,7 @@ function IdentityStep({
         idImageBackUrl: back?.url || null,
         idImageBackKey: back?.key || null,
         rgpdAccepted: true,
+        verificationNote,
       });
       if (res.ok) {
         onConfirmed({
@@ -426,6 +495,25 @@ function IdentityStep({
         <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-amber-700 text-[11px] flex items-start gap-1.5">
           <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
           {ocrNotice}
+        </div>
+      )}
+
+      {/* Security cross-check: declared data vs scanned document */}
+      {!reading && mismatches.length > 0 && (
+        <div className="mt-2 rounded-lg bg-red-50 border border-red-200 p-2.5 text-red-700 text-[11px]">
+          <div className="flex items-center gap-1.5 font-semibold">
+            <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+            Vérification d'identité
+          </div>
+          <ul className="mt-1 list-disc pl-4 space-y-0.5">
+            {mismatches.map((m, i) => (
+              <li key={i}>{m}</li>
+            ))}
+          </ul>
+          <div className="mt-1 text-red-600/80">
+            Vous pouvez continuer — notre équipe vérifiera votre pièce avant
+            confirmation.
+          </div>
         </div>
       )}
 
