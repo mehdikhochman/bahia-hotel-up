@@ -1,11 +1,21 @@
 import { randomBytes } from "crypto";
 
-export const formatXOF = (n: number) =>
-  new Intl.NumberFormat("fr-CI", {
-    style: "currency",
-    currency: "XOF",
-    maximumFractionDigits: 0,
-  }).format(n);
+// Deterministic XOF formatter — intentionally NOT Intl.NumberFormat.
+// Intl picks its group separator and symbol placement from the runtime's ICU
+// data, which differs between Node (server) and mobile browsers (e.g. U+202F vs
+// U+00A0, or a "F CFA 426,800" fallback when the locale is missing). That made
+// the rendered price text differ server vs client, triggering a React 18
+// hydration mismatch that re-rendered the room cards and replayed their
+// entrance animation — the "double load" flicker on mobile. Manual grouping
+// with a fixed separator yields a byte-identical string on every runtime.
+export const formatXOF = (n: number) => {
+  const rounded = Math.round(n);
+  const sign = rounded < 0 ? "-" : "";
+  const digits = Math.abs(rounded)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `${sign}${digits} F CFA`;
+};
 
 /**
  * Generates a human-friendly booking reference.
